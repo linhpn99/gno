@@ -37,24 +37,28 @@ type MsgCall struct {
 	FuncName string   // Function name
 	Args     []string // Function arguments
 	Send     string   // Send amount
+	Noop     bool
 }
 
 // MsgSend - syntax sugar for bank.MsgSend
 type MsgSend struct {
 	ToAddress crypto.Address // Send to address
 	Send      string         // Send amount
+	Noop      bool
 }
 
 // MsgRun - syntax sugar for vm.MsgRun
 type MsgRun struct {
 	Package *std.MemPackage // Package to run
 	Send    string          // Send amount
+	Noop    bool
 }
 
 // MsgAddPackage - syntax sugar for vm.MsgAddPackage
 type MsgAddPackage struct {
 	Package *std.MemPackage // Package to add
 	Deposit string          // Coin deposit
+	Noop    bool
 }
 
 // Call executes one or more MsgCall calls on the blockchain
@@ -86,14 +90,25 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
-		// Unwrap syntax sugar to vm.MsgCall slice
-		vmMsgs = append(vmMsgs, std.Msg(vm.MsgCall{
-			Caller:  c.Signer.Info().GetAddress(),
-			PkgPath: msg.PkgPath,
-			Func:    msg.FuncName,
-			Args:    msg.Args,
-			Send:    send,
-		}))
+		if msg.Noop {
+			// Unwrap syntax sugar to vm.MsgNoop slice
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller:  c.Signer.Info().GetAddress(),
+				PkgPath: msg.PkgPath,
+				Func:    msg.FuncName,
+				Args:    msg.Args,
+				Send:    send,
+			})
+		} else {
+			// Unwrap syntax sugar to vm.MsgCall slice
+			vmMsgs = append(vmMsgs, vm.MsgCall{
+				Caller:  c.Signer.Info().GetAddress(),
+				PkgPath: msg.PkgPath,
+				Func:    msg.FuncName,
+				Args:    msg.Args,
+				Send:    send,
+			})
+		}
 	}
 
 	// Parse gas fee
@@ -131,9 +146,11 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 	// Parse MsgRun slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		// Validate MsgCall fields
-		if err := msg.validateMsgRun(); err != nil {
-			return nil, err
+		if !msg.Noop {
+			// Validate MsgCall fields
+			if err := msg.validateMsgRun(); err != nil {
+				return nil, err
+			}
 		}
 
 		// Parse send coins
@@ -148,11 +165,11 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		msg.Package.Path = ""
 
 		// Unwrap syntax sugar to vm.MsgCall slice
-		vmMsgs = append(vmMsgs, std.Msg(vm.MsgRun{
+		vmMsgs = append(vmMsgs, vm.MsgRun{
 			Caller:  caller,
 			Package: msg.Package,
 			Send:    send,
-		}))
+		})
 	}
 
 	// Parse gas fee
@@ -190,9 +207,11 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 	// Parse MsgSend slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		// Validate MsgSend fields
-		if err := msg.validateMsgSend(); err != nil {
-			return nil, err
+		if !msg.Noop {
+			// Validate MsgSend fields
+			if err := msg.validateMsgSend(); err != nil {
+				return nil, err
+			}
 		}
 
 		// Parse send coins
@@ -202,11 +221,11 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 		}
 
 		// Unwrap syntax sugar to vm.MsgSend slice
-		vmMsgs = append(vmMsgs, std.Msg(bank.MsgSend{
+		vmMsgs = append(vmMsgs, bank.MsgSend{
 			FromAddress: c.Signer.Info().GetAddress(),
 			ToAddress:   msg.ToAddress,
 			Amount:      send,
-		}))
+		})
 	}
 
 	// Parse gas fee
@@ -244,9 +263,11 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 	// Parse MsgRun slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		// Validate MsgCall fields
-		if err := msg.validateMsgAddPackage(); err != nil {
-			return nil, err
+		if !msg.Noop {
+			// Validate MsgCall fields
+			if err := msg.validateMsgAddPackage(); err != nil {
+				return nil, err
+			}
 		}
 
 		// Parse deposit coins
@@ -258,11 +279,11 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 		caller := c.Signer.Info().GetAddress()
 
 		// Unwrap syntax sugar to vm.MsgCall slice
-		vmMsgs = append(vmMsgs, std.Msg(vm.MsgAddPackage{
+		vmMsgs = append(vmMsgs, vm.MsgAddPackage{
 			Creator: caller,
 			Package: msg.Package,
 			Deposit: deposit,
-		}))
+		})
 	}
 
 	// Parse gas fee

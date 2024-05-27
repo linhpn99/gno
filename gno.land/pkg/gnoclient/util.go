@@ -6,6 +6,7 @@ func (cfg BaseTxCfg) validateBaseTxConfig() error {
 	if cfg.GasWanted <= 0 {
 		return ErrInvalidGasWanted
 	}
+
 	if cfg.GasFee == "" {
 		return ErrInvalidGasFee
 	}
@@ -14,9 +15,14 @@ func (cfg BaseTxCfg) validateBaseTxConfig() error {
 }
 
 func (msg MsgCall) validateMsgCall() error {
+	if msg.Noop {
+		return nil
+	}
+
 	if msg.PkgPath == "" {
 		return ErrEmptyPkgPath
 	}
+
 	if msg.FuncName == "" {
 		return ErrEmptyFuncName
 	}
@@ -25,9 +31,14 @@ func (msg MsgCall) validateMsgCall() error {
 }
 
 func (msg MsgSend) validateMsgSend() error {
+	if msg.Noop {
+		return nil
+	}
+
 	if msg.ToAddress.IsZero() {
 		return ErrInvalidToAddress
 	}
+
 	_, err := std.ParseCoins(msg.Send)
 	if err != nil {
 		return ErrInvalidSendAmount
@@ -37,6 +48,10 @@ func (msg MsgSend) validateMsgSend() error {
 }
 
 func (msg MsgRun) validateMsgRun() error {
+	if msg.Noop {
+		return nil
+	}
+
 	if msg.Package == nil || len(msg.Package.Files) == 0 {
 		return ErrEmptyPackage
 	}
@@ -45,6 +60,10 @@ func (msg MsgRun) validateMsgRun() error {
 }
 
 func (msg MsgAddPackage) validateMsgAddPackage() error {
+	if msg.Noop {
+		return nil
+	}
+
 	if msg.Package == nil || len(msg.Package.Files) == 0 {
 		return ErrEmptyPackage
 	}

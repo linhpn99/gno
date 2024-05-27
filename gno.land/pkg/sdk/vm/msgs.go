@@ -204,3 +204,28 @@ func (msg MsgRun) GetSigners() []crypto.Address {
 func (msg MsgRun) GetReceived() std.Coins {
 	return msg.Send
 }
+
+type MsgNoop struct {
+	Caller  crypto.Address `json:"caller" yaml:"caller"`
+	Send    std.Coins      `json:"send" yaml:"send"`
+	PkgPath string         `json:"pkg_path" yaml:"pkg_path"`
+	Func    string         `json:"func" yaml:"func"`
+	Args    []string       `json:"args" yaml:"args"`
+}
+
+func (msg MsgNoop) Route() string { return RouterKey }
+
+func (msg MsgNoop) Type() string { return "no_op" }
+
+func (msg MsgNoop) ValidateBasic() error {
+	// todo : implement logic
+	return nil
+}
+
+func (msg MsgNoop) GetSignBytes() []byte {
+	return std.MustSortJSON(amino.MustMarshalJSON(msg))
+}
+
+func (msg MsgNoop) GetSigners() []crypto.Address {
+	return []crypto.Address{msg.Caller}
+}

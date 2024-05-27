@@ -146,11 +146,9 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 	// Parse MsgRun slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		if !msg.Noop {
-			// Validate MsgCall fields
-			if err := msg.validateMsgRun(); err != nil {
-				return nil, err
-			}
+		// Validate MsgCall fields
+		if err := msg.validateMsgRun(); err != nil {
+			return nil, err
 		}
 
 		// Parse send coins
@@ -207,11 +205,9 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 	// Parse MsgSend slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		if !msg.Noop {
-			// Validate MsgSend fields
-			if err := msg.validateMsgSend(); err != nil {
-				return nil, err
-			}
+		// Validate MsgSend fields
+		if err := msg.validateMsgSend(); err != nil {
+			return nil, err
 		}
 
 		// Parse send coins
@@ -220,12 +216,18 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
-		// Unwrap syntax sugar to vm.MsgSend slice
-		vmMsgs = append(vmMsgs, bank.MsgSend{
-			FromAddress: c.Signer.Info().GetAddress(),
-			ToAddress:   msg.ToAddress,
-			Amount:      send,
-		})
+		if msg.Noop {
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller: c.Signer.Info().GetAddress(),
+			})
+		} else {
+			// Unwrap syntax sugar to vm.MsgSend slice
+			vmMsgs = append(vmMsgs, bank.MsgSend{
+				FromAddress: c.Signer.Info().GetAddress(),
+				ToAddress:   msg.ToAddress,
+				Amount:      send,
+			})
+		}
 	}
 
 	// Parse gas fee
@@ -263,11 +265,9 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 	// Parse MsgRun slice
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
-		if !msg.Noop {
-			// Validate MsgCall fields
-			if err := msg.validateMsgAddPackage(); err != nil {
-				return nil, err
-			}
+		// Validate MsgCall fields
+		if err := msg.validateMsgAddPackage(); err != nil {
+			return nil, err
 		}
 
 		// Parse deposit coins
@@ -278,12 +278,18 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 
 		caller := c.Signer.Info().GetAddress()
 
-		// Unwrap syntax sugar to vm.MsgCall slice
-		vmMsgs = append(vmMsgs, vm.MsgAddPackage{
-			Creator: caller,
-			Package: msg.Package,
-			Deposit: deposit,
-		})
+		if msg.Noop {
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller: caller,
+			})
+		} else {
+			// Unwrap syntax sugar to vm.MsgAddPackage slice
+			vmMsgs = append(vmMsgs, vm.MsgAddPackage{
+				Creator: caller,
+				Package: msg.Package,
+				Deposit: deposit,
+			})
+		}
 	}
 
 	// Parse gas fee

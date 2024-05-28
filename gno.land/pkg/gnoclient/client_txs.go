@@ -93,12 +93,15 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 		if msg.Noop {
 			// Unwrap syntax sugar to vm.MsgNoop slice
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller:  c.Signer.Info().GetAddress(),
-				PkgPath: msg.PkgPath,
-				Func:    msg.FuncName,
-				Args:    msg.Args,
-				Send:    send,
+				Caller: c.Signer.Info().GetAddress(),
+				Package: &std.MemPackage{
+					Path: msg.PkgPath,
+				},
+				Func: msg.FuncName,
+				Args: msg.Args,
+				Send: send,
 			})
+
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{
@@ -162,12 +165,22 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		msg.Package.Name = "main"
 		msg.Package.Path = ""
 
-		// Unwrap syntax sugar to vm.MsgCall slice
-		vmMsgs = append(vmMsgs, vm.MsgRun{
-			Caller:  caller,
-			Package: msg.Package,
-			Send:    send,
-		})
+		if msg.Noop {
+			// Unwrap syntax sugar to vm.MsgCall slice
+			vmMsgs = append(vmMsgs, vm.MsgRun{
+				Caller:  caller,
+				Package: msg.Package,
+				Send:    send,
+			})
+
+		} else {
+			// Unwrap syntax sugar to vm.MsgNoop slice
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller:  c.Signer.Info().GetAddress(),
+				Package: msg.Package,
+				Send:    send,
+			})
+		}
 	}
 
 	// Parse gas fee
@@ -218,8 +231,11 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: c.Signer.Info().GetAddress(),
+				Caller:    c.Signer.Info().GetAddress(),
+				ToAddress: msg.ToAddress,
+				Send:      send,
 			})
+
 		} else {
 			// Unwrap syntax sugar to vm.MsgSend slice
 			vmMsgs = append(vmMsgs, bank.MsgSend{
@@ -280,8 +296,11 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: caller,
+				Caller:  caller,
+				Package: msg.Package,
+				Send:    deposit,
 			})
+
 		} else {
 			// Unwrap syntax sugar to vm.MsgAddPackage slice
 			vmMsgs = append(vmMsgs, vm.MsgAddPackage{

@@ -101,7 +101,6 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 				Args: msg.Args,
 				Send: send,
 			})
-
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{
@@ -172,7 +171,6 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 				Package: msg.Package,
 				Send:    send,
 			})
-
 		} else {
 			// Unwrap syntax sugar to vm.MsgNoop slice
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
@@ -235,7 +233,6 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 				ToAddress: msg.ToAddress,
 				Send:      send,
 			})
-
 		} else {
 			// Unwrap syntax sugar to vm.MsgSend slice
 			vmMsgs = append(vmMsgs, bank.MsgSend{
@@ -300,7 +297,6 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 				Package: msg.Package,
 				Send:    deposit,
 			})
-
 		} else {
 			// Unwrap syntax sugar to vm.MsgAddPackage slice
 			vmMsgs = append(vmMsgs, vm.MsgAddPackage{

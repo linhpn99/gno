@@ -90,7 +90,6 @@ func QueryHandler(cfg *QueryCfg) (*ctypes.ResultABCIQuery, error) {
 
 	qres, err := cli.ABCIQueryWithOptions(
 		cfg.Path, data, opts2)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "querying")
 	}

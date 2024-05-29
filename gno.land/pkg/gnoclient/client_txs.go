@@ -92,15 +92,7 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 
 		if msg.Noop {
 			// Unwrap syntax sugar to vm.MsgNoop slice
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: c.Signer.Info().GetAddress(),
-				Package: &std.MemPackage{
-					Path: msg.PkgPath,
-				},
-				Func: msg.FuncName,
-				Args: msg.Args,
-				Send: send,
-			})
+			vmMsgs = append(vmMsgs, vm.MsgNoop{})
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{
@@ -165,16 +157,14 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		msg.Package.Path = ""
 
 		if msg.Noop {
+			// Unwrap syntax sugar to vm.MsgNoop slice
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller: c.Signer.Info().GetAddress(),
+			})
+		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgRun{
 				Caller:  caller,
-				Package: msg.Package,
-				Send:    send,
-			})
-		} else {
-			// Unwrap syntax sugar to vm.MsgNoop slice
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller:  c.Signer.Info().GetAddress(),
 				Package: msg.Package,
 				Send:    send,
 			})
@@ -302,9 +292,7 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller:  caller,
-				Package: msg.Package,
-				Send:    deposit,
+				Caller: caller,
 			})
 		} else {
 			// Unwrap syntax sugar to vm.MsgAddPackage slice

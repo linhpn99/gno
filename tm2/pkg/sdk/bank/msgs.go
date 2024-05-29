@@ -11,8 +11,7 @@ import (
 const RouterKey = ModuleName
 
 type MsgNoop struct {
-	Inputs  []Input  `json:"inputs" yaml:"inputs"`
-	Outputs []Output `json:"outputs" yaml:"outputs"`
+	Caller crypto.Address `json:"caller" yaml:"caller"`
 }
 
 func (msg MsgNoop) Route() string { return RouterKey }
@@ -21,12 +20,8 @@ func (msg MsgNoop) Type() string { return "no_op" }
 
 func (msg MsgNoop) ValidateBasic() error {
 	// todo : implement logic
-	if len(msg.Inputs) == 0 {
-		return ErrNoInputs()
-	}
-
-	if len(msg.Outputs) == 0 {
-		return ErrNoOutputs()
+	if msg.Caller.IsZero() {
+		return std.ErrInvalidAddress("missing caller address")
 	}
 
 	return nil
@@ -37,12 +32,7 @@ func (msg MsgNoop) GetSignBytes() []byte {
 }
 
 func (msg MsgNoop) GetSigners() []crypto.Address {
-	addrs := make([]crypto.Address, len(msg.Inputs))
-	for i, in := range msg.Inputs {
-		addrs[i] = in.Address
-	}
-
-	return addrs
+	return []crypto.Address{msg.Caller}
 }
 
 // MsgSend - high level transaction of the coin module

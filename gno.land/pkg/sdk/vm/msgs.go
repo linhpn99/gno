@@ -206,12 +206,7 @@ func (msg MsgRun) GetReceived() std.Coins {
 }
 
 type MsgNoop struct {
-	Caller    crypto.Address  `json:"caller" yaml:"caller"`
-	Package   *std.MemPackage `json:"package" yaml:"package"`
-	Func      string          `json:"func" yaml:"func"`
-	Args      []string        `json:"args" yaml:"args"`
-	Send      std.Coins       `json:"send" yaml:"send"`
-	ToAddress crypto.Address  `json:"to_address" yaml:"to_address"`
+	Caller crypto.Address `json:"caller" yaml:"caller"`
 }
 
 func (msg MsgNoop) Route() string { return RouterKey }

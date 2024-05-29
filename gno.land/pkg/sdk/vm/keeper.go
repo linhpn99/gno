@@ -34,7 +34,6 @@ type VMKeeperI interface {
 	AddPackage(ctx sdk.Context, msg MsgAddPackage) error
 	Call(ctx sdk.Context, msg MsgCall) (res string, err error)
 	Run(ctx sdk.Context, msg MsgRun) (res string, err error)
-	Noop(ctx sdk.Context, msg MsgNoop) (res string, err error)
 }
 
 var _ VMKeeperI = &VMKeeper{}
@@ -284,7 +283,7 @@ func (vm *VMKeeper) Call(ctx sdk.Context, msg MsgCall) (res string, err error) {
 	}
 	// Make context.
 	// NOTE: if this is too expensive,
-	// could it be safely partially memoized?
+	// could it be safely partially memorized?
 	msgCtx := stdlibs.ExecContext{
 		ChainID:       ctx.ChainID(),
 		Height:        ctx.BlockHeight(),
@@ -458,12 +457,6 @@ func (vm *VMKeeper) Run(ctx sdk.Context, msg MsgRun) (res string, err error) {
 		},
 	)
 
-	return res, nil
-}
-
-// Noop calls a public Gno function but do nothing
-func (vm *VMKeeper) Noop(ctx sdk.Context, msg MsgNoop) (res string, err error) {
-	// todo : what shoud we do here ?
 	return res, nil
 }
 

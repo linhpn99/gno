@@ -88,13 +88,17 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
+		caller := c.Signer.Info().GetAddress()
+
 		// Handle no-operation messages
 		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{})
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
+				Caller: caller,
+			})
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{
-				Caller:  c.Signer.Info().GetAddress(),
+				Caller:  caller,
 				PkgPath: msg.PkgPath,
 				Func:    msg.FuncName,
 				Args:    msg.Args,
@@ -140,7 +144,7 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		// Handle no-operation messages
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: c.Signer.Info().GetAddress(),
+				Caller: caller,
 			})
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
@@ -181,15 +185,17 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
+		caller := c.Signer.Info().GetAddress()
+
 		// Handle no-operation messages
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: c.Signer.Info().GetAddress(),
+				Caller: caller,
 			})
 		} else {
 			// Unwrap syntax sugar to vm.MsgSend slice
 			vmMsgs = append(vmMsgs, bank.MsgSend{
-				FromAddress: c.Signer.Info().GetAddress(),
+				FromAddress: caller,
 				ToAddress:   msg.ToAddress,
 				Amount:      send,
 			})

@@ -179,6 +179,22 @@ func TestCallMultiple(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
+func TestSendWithNoopMsg(t *testing.T) {
+	// todo
+}
+
+func TestCallWithNoopMsg(t *testing.T) {
+	// todo
+}
+
+func TestRunWithNoopMsg(t *testing.T) {
+	// todo
+}
+
+func TestAddPackageWithNoopMsg(t *testing.T) {
+	// todo
+}
+
 func TestCallErrors(t *testing.T) {
 	t.Parallel()
 

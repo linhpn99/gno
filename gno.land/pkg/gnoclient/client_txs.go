@@ -218,7 +218,7 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 		}
 
 		if msg.Noop {
-			vmMsgs = append(vmMsgs, bank.MsgNoop{
+			vmMsgs = append(vmMsgs, vm.MsgNoop{
 				Caller: c.Signer.Info().GetAddress(),
 			})
 		} else {

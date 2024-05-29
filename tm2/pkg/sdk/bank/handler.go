@@ -30,9 +30,6 @@ func (bh bankHandler) Process(ctx sdk.Context, msg std.Msg) sdk.Result {
 	case MsgMultiSend:
 		return bh.handleMsgMultiSend(ctx, msg)
 
-	case MsgNoop:
-		return bh.handleMsgNoop(ctx, msg)
-
 	default:
 		errMsg := fmt.Sprintf("unrecognized bank message type: %T", msg)
 		return abciResult(std.ErrUnknownRequest(errMsg))
@@ -95,12 +92,6 @@ func (bh bankHandler) handleMsgMultiSend(ctx sdk.Context, msg MsgMultiSend) sdk.
 		)
 	*/
 
-	return sdk.Result{}
-}
-
-// Handle MsgNoop.
-func (bh bankHandler) handleMsgNoop(ctx sdk.Context, msg MsgNoop) sdk.Result {
-	// todo : implement logic here
 	return sdk.Result{}
 }
 

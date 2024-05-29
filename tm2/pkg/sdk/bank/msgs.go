@@ -10,31 +10,6 @@ import (
 // RouterKey is they name of the bank module
 const RouterKey = ModuleName
 
-type MsgNoop struct {
-	Caller crypto.Address `json:"caller" yaml:"caller"`
-}
-
-func (msg MsgNoop) Route() string { return RouterKey }
-
-func (msg MsgNoop) Type() string { return "no_op" }
-
-func (msg MsgNoop) ValidateBasic() error {
-	// todo : implement logic
-	if msg.Caller.IsZero() {
-		return std.ErrInvalidAddress("missing caller address")
-	}
-
-	return nil
-}
-
-func (msg MsgNoop) GetSignBytes() []byte {
-	return std.MustSortJSON(amino.MustMarshalJSON(msg))
-}
-
-func (msg MsgNoop) GetSigners() []crypto.Address {
-	return []crypto.Address{msg.Caller}
-}
-
 // MsgSend - high level transaction of the coin module
 type MsgSend struct {
 	FromAddress crypto.Address `json:"from_address" yaml:"from_address"`

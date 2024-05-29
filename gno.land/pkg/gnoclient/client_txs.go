@@ -10,6 +10,7 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
+// Define various error messages for different validation failures
 var (
 	ErrEmptyPackage      = errors.New("empty package to run")
 	ErrEmptyPkgPath      = errors.New("empty pkg path")
@@ -37,37 +38,34 @@ type MsgCall struct {
 	FuncName string   // Function name
 	Args     []string // Function arguments
 	Send     string   // Send amount
-	Noop     bool
+	Noop     bool     // No-operation flag
 }
 
 // MsgSend - syntax sugar for bank.MsgSend
 type MsgSend struct {
 	ToAddress crypto.Address // Send to address
 	Send      string         // Send amount
-	Noop      bool
+	Noop      bool           // No-operation flag
 }
 
 // MsgRun - syntax sugar for vm.MsgRun
 type MsgRun struct {
 	Package *std.MemPackage // Package to run
 	Send    string          // Send amount
-	Noop    bool
+	Noop    bool            // No-operation flag
 }
 
 // MsgAddPackage - syntax sugar for vm.MsgAddPackage
 type MsgAddPackage struct {
 	Package *std.MemPackage // Package to add
 	Deposit string          // Coin deposit
-	Noop    bool
+	Noop    bool            // No-operation flag
 }
 
 // Call executes one or more MsgCall calls on the blockchain
 func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
-	if err := c.validateSigner(); err != nil {
-		return nil, err
-	}
-	if err := c.validateRPCClient(); err != nil {
+	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
@@ -90,8 +88,8 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
+		// Handle no-operation messages
 		if msg.Noop {
-			// Unwrap syntax sugar to vm.MsgNoop slice
 			vmMsgs = append(vmMsgs, vm.MsgNoop{})
 		} else {
 			// Unwrap syntax sugar to vm.MsgCall slice
@@ -105,30 +103,13 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 		}
 	}
 
-	// Parse gas fee
-	gasFeeCoins, err := std.ParseCoin(cfg.GasFee)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pack transaction
-	tx := std.Tx{
-		Msgs:       vmMsgs,
-		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
-		Signatures: nil,
-		Memo:       cfg.Memo,
-	}
-
-	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
+	return c.sendTransaction(cfg, vmMsgs...)
 }
 
 // Run executes one or more MsgRun calls on the blockchain
 func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
-	if err := c.validateSigner(); err != nil {
-		return nil, err
-	}
-	if err := c.validateRPCClient(); err != nil {
+	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
@@ -156,8 +137,8 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		msg.Package.Name = "main"
 		msg.Package.Path = ""
 
+		// Handle no-operation messages
 		if msg.Noop {
-			// Unwrap syntax sugar to vm.MsgNoop slice
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
 				Caller: c.Signer.Info().GetAddress(),
 			})
@@ -171,30 +152,13 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		}
 	}
 
-	// Parse gas fee
-	gasFeeCoins, err := std.ParseCoin(cfg.GasFee)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pack transaction
-	tx := std.Tx{
-		Msgs:       vmMsgs,
-		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
-		Signatures: nil,
-		Memo:       cfg.Memo,
-	}
-
-	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
+	return c.sendTransaction(cfg, vmMsgs...)
 }
 
 // Send executes one or more MsgSend calls on the blockchain
 func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
-	if err := c.validateSigner(); err != nil {
-		return nil, err
-	}
-	if err := c.validateRPCClient(); err != nil {
+	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
@@ -217,6 +181,7 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 			return nil, err
 		}
 
+		// Handle no-operation messages
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
 				Caller: c.Signer.Info().GetAddress(),
@@ -231,30 +196,13 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 		}
 	}
 
-	// Parse gas fee
-	gasFeeCoins, err := std.ParseCoin(cfg.GasFee)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pack transaction
-	tx := std.Tx{
-		Msgs:       vmMsgs,
-		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
-		Signatures: nil,
-		Memo:       cfg.Memo,
-	}
-
-	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
+	return c.sendTransaction(cfg, vmMsgs...)
 }
 
 // AddPackage executes one or more AddPackage calls on the blockchain
 func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
-	if err := c.validateSigner(); err != nil {
-		return nil, err
-	}
-	if err := c.validateRPCClient(); err != nil {
+	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
@@ -279,6 +227,7 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 
 		caller := c.Signer.Info().GetAddress()
 
+		// Handle no-operation messages
 		if msg.Noop {
 			vmMsgs = append(vmMsgs, vm.MsgNoop{
 				Caller: caller,
@@ -293,21 +242,7 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 		}
 	}
 
-	// Parse gas fee
-	gasFeeCoins, err := std.ParseCoin(cfg.GasFee)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pack transaction
-	tx := std.Tx{
-		Msgs:       vmMsgs,
-		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
-		Signatures: nil,
-		Memo:       cfg.Memo,
-	}
-
-	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
+	return c.sendTransaction(cfg, vmMsgs...)
 }
 
 // signAndBroadcastTxCommit signs a transaction and broadcasts it, returning the result
@@ -351,6 +286,27 @@ func (c *Client) signAndBroadcastTxCommit(tx std.Tx, accountNumber, sequenceNumb
 	}
 
 	return bres, nil
+}
+
+// sendTransaction creates and sends a transaction containing the provided messages.
+// It uses the given transaction configuration for gas fee and other parameters.
+func (c *Client) sendTransaction(cfg BaseTxCfg, msgs ...std.Msg) (*ctypes.ResultBroadcastTxCommit, error) {
+	// Parse gas fee
+	gasFeeCoins, err := std.ParseCoin(cfg.GasFee)
+	if err != nil {
+		return nil, err
+	}
+
+	// Pack transaction
+	tx := std.Tx{
+		Msgs:       msgs,
+		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
+		Signatures: nil,
+		Memo:       cfg.Memo,
+	}
+
+	// Sign and broadcast the transaction, then return the result.
+	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
 }
 
 // TODO: Add more functionality, examples, and unit tests.

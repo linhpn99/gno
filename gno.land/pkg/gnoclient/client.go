@@ -10,6 +10,18 @@ type Client struct {
 	RPCClient rpcclient.Client // RPC client for blockchain communication
 }
 
+func (c *Client) validateClient() error {
+	if err := c.validateSigner(); err != nil {
+		return err
+	}
+
+	if err := c.validateRPCClient(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // validateSigner checks that the signer is correctly configured.
 func (c *Client) validateSigner() error {
 	if c.Signer == nil {

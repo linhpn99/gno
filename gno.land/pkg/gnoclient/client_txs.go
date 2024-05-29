@@ -228,10 +228,19 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 		}
 
 		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller:    c.Signer.Info().GetAddress(),
-				ToAddress: msg.ToAddress,
-				Send:      send,
+			vmMsgs = append(vmMsgs, bank.MsgNoop{
+				Inputs: []bank.Input{
+					{
+						Address: c.Signer.Info().GetAddress(),
+						Coins:   send,
+					},
+				},
+				Outputs: []bank.Output{
+					{
+						Address: msg.ToAddress,
+						Coins:   send,
+					},
+				},
 			})
 		} else {
 			// Unwrap syntax sugar to vm.MsgSend slice

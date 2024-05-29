@@ -10,6 +10,41 @@ import (
 // RouterKey is they name of the bank module
 const RouterKey = ModuleName
 
+type MsgNoop struct {
+	Inputs  []Input  `json:"inputs" yaml:"inputs"`
+	Outputs []Output `json:"outputs" yaml:"outputs"`
+}
+
+func (msg MsgNoop) Route() string { return RouterKey }
+
+func (msg MsgNoop) Type() string { return "no_op" }
+
+func (msg MsgNoop) ValidateBasic() error {
+	// todo : implement logic
+	if len(msg.Inputs) == 0 {
+		return ErrNoInputs()
+	}
+
+	if len(msg.Outputs) == 0 {
+		return ErrNoOutputs()
+	}
+
+	return nil
+}
+
+func (msg MsgNoop) GetSignBytes() []byte {
+	return std.MustSortJSON(amino.MustMarshalJSON(msg))
+}
+
+func (msg MsgNoop) GetSigners() []crypto.Address {
+	addrs := make([]crypto.Address, len(msg.Inputs))
+	for i, in := range msg.Inputs {
+		addrs[i] = in.Address
+	}
+
+	return addrs
+}
+
 // MsgSend - high level transaction of the coin module
 type MsgSend struct {
 	FromAddress crypto.Address `json:"from_address" yaml:"from_address"`

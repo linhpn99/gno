@@ -215,6 +215,12 @@ type MsgNoop struct {
 
 var _ std.Msg = MsgNoop{}
 
+func NewMsgNoop(caller crypto.Address) MsgCall {
+	return MsgCall{
+		Caller: caller,
+	}
+}
+
 // Implements Msg.
 func (msg MsgNoop) Route() string { return RouterKey }
 

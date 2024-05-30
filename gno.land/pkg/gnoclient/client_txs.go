@@ -105,7 +105,6 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 			Args:    msg.Args,
 			Send:    send,
 		})
-
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)
@@ -148,7 +147,6 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 			Package: msg.Package,
 			Send:    send,
 		})
-
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)
@@ -227,7 +225,6 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 			Package: msg.Package,
 			Deposit: deposit,
 		})
-
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)

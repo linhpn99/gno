@@ -267,7 +267,6 @@ func TestSendSingle_Integration(t *testing.T) {
 	got := account.GetCoins()
 
 	assert.Equal(t, expected, got)
-
 }
 
 // Run tests

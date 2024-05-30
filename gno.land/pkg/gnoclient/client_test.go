@@ -109,7 +109,7 @@ func TestCallSingle(t *testing.T) {
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
 }
 
-func TestSponsorCallSingle(t *testing.T) {
+func TestCallSingle_Sponsor(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -155,7 +155,9 @@ func TestSponsorCallSingle(t *testing.T) {
 		Send:     "100ugnot",
 	}
 
-	res, err := client.Sponsor(cfg, msg)
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(cfg, sponsoree, msg)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -231,7 +233,7 @@ func TestCallMultiple(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
-func TestSponsorCallMultiple(t *testing.T) {
+func TestCallMultiple_Sponsor(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -291,7 +293,9 @@ func TestSponsorCallMultiple(t *testing.T) {
 		Send:     "",
 	}
 
-	res, err := client.Sponsor(cfg, msg1, msg2, msg3)
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2, msg3)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -480,7 +484,7 @@ func TestCallErrors(t *testing.T) {
 	}
 }
 
-func TestSend(t *testing.T) {
+func TestSendSingle(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -534,7 +538,60 @@ func TestSend(t *testing.T) {
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
 }
 
-func TestSponsorSend(t *testing.T) {
+func TestSendSingle_Sponsor(t *testing.T) {
+	t.Parallel()
+
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("it works!"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
+
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	sponsorRecipient, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+	receiver, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+
+	msg := MsgSend{
+		ToAddress: receiver,
+		Send:      "100ugnot",
+	}
+
+	res, err := client.Sponsor(cfg, sponsorRecipient, msg)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
+}
+
+func TestSendMultiple(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -575,18 +632,82 @@ func TestSponsorSend(t *testing.T) {
 
 	receiver, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
 
-	msg := MsgSend{
+	msg1 := MsgSend{
 		ToAddress: receiver,
 		Send:      "100ugnot",
 	}
 
-	res, err := client.Sponsor(cfg, msg)
+	msg2 := MsgSend{
+		ToAddress: receiver,
+		Send:      "200ugnot",
+	}
+
+	res, err := client.Send(cfg, msg1, msg2)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
 }
 
-func TestSend_Errors(t *testing.T) {
+func TestSendMultiple_Sponsor(t *testing.T) {
+	t.Parallel()
+
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("it works!"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
+
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	receiver, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+
+	msg1 := MsgSend{
+		ToAddress: receiver,
+		Send:      "100ugnot",
+	}
+
+	msg2 := MsgSend{
+		ToAddress: receiver,
+		Send:      "200ugnot",
+	}
+
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
+}
+
+func TestSendErrors(t *testing.T) {
 	t.Parallel()
 
 	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
@@ -845,7 +966,7 @@ func main() {
 }
 
 // Run tests
-func TestSponsorRunSingle(t *testing.T) {
+func TestRunSingle_Sponsor(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -906,7 +1027,9 @@ func main() {
 		Send: "",
 	}
 
-	res, err := client.Sponsor(cfg, msg)
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(cfg, sponsoree, msg)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\n", string(res.DeliverTx.Data))
@@ -991,7 +1114,7 @@ func main() {
 	assert.Equal(t, "hi gnoclient!\nhi gnoclient!\n", string(res.DeliverTx.Data))
 }
 
-func TestSponsorRunMultiple(t *testing.T) {
+func TestRunMultiple_Sponsor(t *testing.T) {
 	t.Parallel()
 
 	client := Client{
@@ -1064,7 +1187,9 @@ func main() {
 		Send: "",
 	}
 
-	res, err := client.Sponsor(cfg, msg1, msg2)
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\nhi gnoclient!\n", string(res.DeliverTx.Data))

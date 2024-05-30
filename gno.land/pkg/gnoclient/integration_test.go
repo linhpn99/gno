@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Run tests
 func TestCallSingle_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
@@ -61,6 +62,55 @@ func TestCallSingle_Integration(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
+// Run tests
+func TestCallSingle_Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	// Make Msg config
+	msg := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{"test argument"},
+		Send:     "",
+	}
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Execute call
+	res, err := client.Sponsor(baseCfg, sponsoree, msg)
+
+	expected := "(\"hi test argument\" string)\n\n"
+	got := string(res.DeliverTx.Data)
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, got)
+}
+
+// Run tests
 func TestCallMultiple_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
@@ -113,6 +163,63 @@ func TestCallMultiple_Integration(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
+// Run tests
+func TestCallMultiple_Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	// Make Msg configs
+	msg1 := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{""},
+		Send:     "",
+	}
+
+	// Same call, different argument
+	msg2 := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{"test argument"},
+		Send:     "",
+	}
+
+	expected := "(\"it works!\" string)\n\n(\"hi test argument\" string)\n\n"
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Execute call
+	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
+
+	got := string(res.DeliverTx.Data)
+	assert.Nil(t, err)
+	assert.Equal(t, expected, got)
+}
+
+// Run tests
 func TestSendSingle_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
@@ -160,9 +267,64 @@ func TestSendSingle_Integration(t *testing.T) {
 	got := account.GetCoins()
 
 	assert.Equal(t, expected, got)
+
 }
 
-func TestSendMultiple_Integration(t *testing.T) {
+// Run tests
+func TestSendSingle_Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	// Make Send config for a new address on the blockchain
+	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+	amount := 10
+	msg := MsgSend{
+		ToAddress: toAddress,
+		Send:      std.Coin{"ugnot", int64(amount)}.String(),
+	}
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Execute send
+	res, err := client.Sponsor(baseCfg, sponsoree, msg)
+	assert.Nil(t, err)
+	assert.Equal(t, "", string(res.DeliverTx.Data))
+
+	// Get the new account balance
+	account, _, err := client.QueryAccount(signer.Info().GetAddress())
+	assert.Nil(t, err)
+
+	expected := std.Coins{{"ugnot", int64(amount)}}
+	got := account.GetCoins()
+
+	assert.Equal(t, expected, got)
+}
+
+// Run tests
+func TestSendMultiple_Sponsor_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
 	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
@@ -203,8 +365,11 @@ func TestSendMultiple_Integration(t *testing.T) {
 		Send:      std.Coin{"ugnot", int64(amount2)}.String(),
 	}
 
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
 	// Execute send
-	res, err := client.Send(baseCfg, msg1, msg2)
+	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 	assert.NoError(t, err)
 	assert.Equal(t, "", string(res.DeliverTx.Data))
 
@@ -271,6 +436,67 @@ func main() {
 	}
 
 	res, err := client.Run(baseCfg, msg)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, string(res.DeliverTx.Data), "- before: 0\n- after: 10\n")
+}
+
+// Run tests
+func TestRunSingle__Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	fileBody := `package main
+import (
+	"gno.land/p/demo/ufmt"
+	"gno.land/r/demo/tests"
+)
+func main() {
+	println(ufmt.Sprintf("- before: %d", tests.Counter()))
+	for i := 0; i < 10; i++ {
+		tests.IncCounter()
+	}
+	println(ufmt.Sprintf("- after: %d", tests.Counter()))
+}`
+
+	// Make Msg configs
+	msg := MsgRun{
+		Package: &std.MemPackage{
+			Files: []*std.MemFile{
+				{
+					Name: "main.gno",
+					Body: fileBody,
+				},
+			},
+		},
+		Send: "",
+	}
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(baseCfg, sponsoree, msg)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "- before: 0\n- after: 10\n")
@@ -356,6 +582,90 @@ func main() {
 	assert.Equal(t, expected, string(res.DeliverTx.Data))
 }
 
+// Run tests
+func TestRunMultiple_Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	fileBody1 := `package main
+import (
+	"gno.land/p/demo/ufmt"
+	"gno.land/r/demo/tests"
+)
+func main() {
+	println(ufmt.Sprintf("- before: %d", tests.Counter()))
+	for i := 0; i < 10; i++ {
+		tests.IncCounter()
+	}
+	println(ufmt.Sprintf("- after: %d", tests.Counter()))
+}`
+
+	fileBody2 := `package main
+import (
+	"gno.land/p/demo/ufmt"
+	"gno.land/r/demo/deep/very/deep"
+)
+func main() {
+	println(ufmt.Sprintf("%s", deep.Render("gnoclient!")))
+}`
+
+	// Make Msg configs
+	msg1 := MsgRun{
+		Package: &std.MemPackage{
+			Files: []*std.MemFile{
+				{
+					Name: "main.gno",
+					Body: fileBody1,
+				},
+			},
+		},
+		Send: "",
+	}
+	msg2 := MsgRun{
+		Package: &std.MemPackage{
+			Files: []*std.MemFile{
+				{
+					Name: "main.gno",
+					Body: fileBody2,
+				},
+			},
+		},
+		Send: "",
+	}
+
+	expected := "- before: 0\n- after: 10\nhi gnoclient!\n"
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, expected, string(res.DeliverTx.Data))
+}
+
+// Run tests
 func TestAddPackageSingle_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
@@ -425,6 +735,80 @@ func Echo(str string) string {
 	assert.Equal(t, baseAcc.GetCoins().String(), deposit)
 }
 
+// Run tests
+func TestAddPackageSingle__Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	body := `package echo
+
+func Echo(str string) string {
+	return str
+}`
+
+	fileName := "echo.gno"
+	deploymentPath := "gno.land/p/demo/integration/test/echo"
+	deposit := "100ugnot"
+
+	// Make Msg config
+	msg := MsgAddPackage{
+		Package: &std.MemPackage{
+			Name: "echo",
+			Path: deploymentPath,
+			Files: []*std.MemFile{
+				{
+					Name: fileName,
+					Body: body,
+				},
+			},
+		},
+		Deposit: deposit,
+	}
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Execute AddPackage
+	_, err = client.Sponsor(baseCfg, sponsoree, msg)
+	assert.Nil(t, err)
+
+	// Check for deployed file on the node
+	query, err := client.Query(QueryCfg{
+		Path: "vm/qfile",
+		Data: []byte(deploymentPath),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, string(query.Response.Data), fileName)
+
+	// Query balance to validate deposit
+	baseAcc, _, err := client.QueryAccount(gnolang.DerivePkgAddr(deploymentPath))
+	require.NoError(t, err)
+	assert.Equal(t, baseAcc.GetCoins().String(), deposit)
+}
+
+// Run tests
 func TestAddPackageMultiple_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
@@ -501,6 +885,116 @@ func Hello(str string) string {
 
 	// Execute AddPackage
 	_, err = client.AddPackage(baseCfg, msg1, msg2)
+	assert.Nil(t, err)
+
+	// Check Package #1
+	query, err := client.Query(QueryCfg{
+		Path: "vm/qfile",
+		Data: []byte(deploymentPath1),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, string(query.Response.Data), "echo.gno")
+
+	// Query balance to validate deposit
+	baseAcc, _, err := client.QueryAccount(gnolang.DerivePkgAddr(deploymentPath1))
+	require.NoError(t, err)
+	assert.Equal(t, baseAcc.GetCoins().String(), "")
+
+	// Check Package #2
+	query, err = client.Query(QueryCfg{
+		Path: "vm/qfile",
+		Data: []byte(deploymentPath2),
+	})
+	require.NoError(t, err)
+	assert.Contains(t, string(query.Response.Data), "hello.gno")
+	assert.Contains(t, string(query.Response.Data), "gno.mod")
+
+	// Query balance to validate deposit
+	baseAcc, _, err = client.QueryAccount(gnolang.DerivePkgAddr(deploymentPath2))
+	require.NoError(t, err)
+	assert.Equal(t, baseAcc.GetCoins().String(), deposit)
+}
+
+// Run tests
+func TestAddPackageMultiple__Sponsor_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
+	// Make Tx config
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	deposit := "100ugnot"
+	deploymentPath1 := "gno.land/p/demo/integration/test/echo"
+
+	body1 := `package echo
+
+func Echo(str string) string {
+	return str
+}`
+
+	deploymentPath2 := "gno.land/p/demo/integration/test/hello"
+	body2 := `package hello
+
+func Hello(str string) string {
+	return "Hello " + str + "!" 
+}`
+
+	msg1 := MsgAddPackage{
+		Package: &std.MemPackage{
+			Name: "echo",
+			Path: deploymentPath1,
+			Files: []*std.MemFile{
+				{
+					Name: "echo.gno",
+					Body: body1,
+				},
+			},
+		},
+		Deposit: "",
+	}
+
+	msg2 := MsgAddPackage{
+		Package: &std.MemPackage{
+			Name: "hello",
+			Path: deploymentPath2,
+			Files: []*std.MemFile{
+				{
+					Name: "gno.mod",
+					Body: "module gno.land/p/demo/integration/test/hello",
+				},
+				{
+					Name: "hello.gno",
+					Body: body2,
+				},
+			},
+		},
+		Deposit: deposit,
+	}
+
+	// sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Execute AddPackage
+	_, err = client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 	assert.Nil(t, err)
 
 	// Check Package #1

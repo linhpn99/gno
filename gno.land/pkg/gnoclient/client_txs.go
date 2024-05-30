@@ -235,8 +235,9 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 	return c.sendTransaction(cfg, vmMsgs...)
 }
 
-// Sponsor executes one or more calls/sends/runs/addPackages on the blockchain which only deducts fee of the first signer (client.Signer)
-func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxCommit, error) {
+// Sponsor allows sending one or more transactions (represented by `msgs`) using the signer's account to pay transaction fees.
+// The `sponsoree` account benefits from these transactions without incurring any gas costs.
+func (c *Client) Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
 	if err := c.validateClient(); err != nil {
 		return nil, err
@@ -247,14 +248,12 @@ func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxC
 		return nil, err
 	}
 
-	caller := c.Signer.Info().GetAddress()
-
 	// Parse Msg slice
 	vmMsgs := make([]std.Msg, 0, len(msgs)+1)
 
 	// the first msg in list must be MsgNoop
 	vmMsgs = append(vmMsgs, vm.MsgNoop{
-		Caller: caller,
+		Caller: c.Signer.Info().GetAddress(),
 	})
 
 	for _, msg := range msgs {
@@ -277,7 +276,7 @@ func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxC
 		case MsgCall:
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{
-				Caller:  caller,
+				Caller:  sponsoree,
 				PkgPath: m.PkgPath,
 				Func:    m.FuncName,
 				Args:    m.Args,
@@ -287,7 +286,7 @@ func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxC
 		case MsgSend:
 			// Unwrap syntax sugar to vm.MsgSend slice
 			vmMsgs = append(vmMsgs, bank.MsgSend{
-				FromAddress: caller,
+				FromAddress: sponsoree,
 				ToAddress:   m.ToAddress,
 				Amount:      coins,
 			})
@@ -298,7 +297,7 @@ func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxC
 
 			// Unwrap syntax sugar to vm.MsgRun slice
 			vmMsgs = append(vmMsgs, vm.MsgRun{
-				Caller:  caller,
+				Caller:  sponsoree,
 				Package: m.Package,
 				Send:    coins,
 			})
@@ -306,7 +305,7 @@ func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxC
 		case MsgAddPackage:
 			// Unwrap syntax sugar to vm.MsgAddPackage slice
 			vmMsgs = append(vmMsgs, vm.MsgAddPackage{
-				Creator: caller,
+				Creator: sponsoree,
 				Package: m.Package,
 				Deposit: coins,
 			})

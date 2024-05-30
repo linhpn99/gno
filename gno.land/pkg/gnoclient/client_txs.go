@@ -39,7 +39,6 @@ type MsgCall struct {
 	FuncName string   // Function name
 	Args     []string // Function arguments
 	Send     string   // Send amount
-	Noop     bool     // No-operation flag
 }
 
 // MsgSend - syntax sugar for bank.MsgSend
@@ -58,7 +57,6 @@ type MsgRun struct {
 type MsgAddPackage struct {
 	Package *std.MemPackage // Package to add
 	Deposit string          // Coin deposit
-	Noop    bool            // No-operation flag
 }
 
 // MsgNoop - syntax sugar for vm.NoopMsg

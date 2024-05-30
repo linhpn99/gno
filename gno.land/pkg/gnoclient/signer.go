@@ -24,6 +24,9 @@ type SignerFromKeybase struct {
 	ChainID  string       // Chain ID for transaction signing
 }
 
+// Ensure SignerFromKeybase implements the Signer interface.
+var _ Signer = (*SignerFromKeybase)(nil)
+
 // Validate checks if the signer is properly configured.
 func (s SignerFromKeybase) Validate() error {
 	if s.ChainID == "" {
@@ -123,9 +126,6 @@ func (s SignerFromKeybase) Sign(cfg SignCfg) (*std.Tx, error) {
 
 	return &tx, nil
 }
-
-// Ensure SignerFromKeybase implements the Signer interface.
-var _ Signer = (*SignerFromKeybase)(nil)
 
 // SignerFromBip39 creates a signer from an in-memory keybase with a single default account, derived from the given mnemonic.
 // This can be useful in scenarios where storing private keys in the filesystem isn't feasible.

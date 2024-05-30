@@ -21,6 +21,7 @@ var (
 	ErrMissingRPCClient  = errors.New("missing RPCClient")
 	ErrInvalidToAddress  = errors.New("invalid send to address")
 	ErrInvalidSendAmount = errors.New("invalid send amount")
+	ErrInvalidMsgType    = errors.New("invalid msg type")
 )
 
 // BaseTxCfg defines the base transaction configuration, shared by all message types
@@ -45,14 +46,12 @@ type MsgCall struct {
 type MsgSend struct {
 	ToAddress crypto.Address // Send to address
 	Send      string         // Send amount
-	Noop      bool           // No-operation flag
 }
 
 // MsgRun - syntax sugar for vm.MsgRun
 type MsgRun struct {
 	Package *std.MemPackage // Package to run
 	Send    string          // Send amount
-	Noop    bool            // No-operation flag
 }
 
 // MsgAddPackage - syntax sugar for vm.MsgAddPackage
@@ -60,6 +59,16 @@ type MsgAddPackage struct {
 	Package *std.MemPackage // Package to add
 	Deposit string          // Coin deposit
 	Noop    bool            // No-operation flag
+}
+
+// MsgNoop - syntax sugar for vm.NoopMsg
+type MsgNoop struct {
+	Caller crypto.Address
+}
+
+type Msg interface {
+	validateMsg() error
+	getCoins() (std.Coins, error)
 }
 
 // Call executes one or more MsgCall calls on the blockchain
@@ -78,7 +87,7 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
 		// Validate MsgCall fields
-		if err := msg.validateMsgCall(); err != nil {
+		if err := msg.validateMsg(); err != nil {
 			return nil, err
 		}
 
@@ -90,21 +99,15 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 
 		caller := c.Signer.Info().GetAddress()
 
-		// Handle no-operation messages
-		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: caller,
-			})
-		} else {
-			// Unwrap syntax sugar to vm.MsgCall slice
-			vmMsgs = append(vmMsgs, vm.MsgCall{
-				Caller:  caller,
-				PkgPath: msg.PkgPath,
-				Func:    msg.FuncName,
-				Args:    msg.Args,
-				Send:    send,
-			})
-		}
+		// Unwrap syntax sugar to vm.MsgCall slice
+		vmMsgs = append(vmMsgs, vm.MsgCall{
+			Caller:  caller,
+			PkgPath: msg.PkgPath,
+			Func:    msg.FuncName,
+			Args:    msg.Args,
+			Send:    send,
+		})
+
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)
@@ -126,7 +129,7 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
 		// Validate MsgCall fields
-		if err := msg.validateMsgRun(); err != nil {
+		if err := msg.validateMsg(); err != nil {
 			return nil, err
 		}
 
@@ -141,19 +144,13 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		msg.Package.Name = "main"
 		msg.Package.Path = ""
 
-		// Handle no-operation messages
-		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: caller,
-			})
-		} else {
-			// Unwrap syntax sugar to vm.MsgCall slice
-			vmMsgs = append(vmMsgs, vm.MsgRun{
-				Caller:  caller,
-				Package: msg.Package,
-				Send:    send,
-			})
-		}
+		// Unwrap syntax sugar to vm.MsgCall slice
+		vmMsgs = append(vmMsgs, vm.MsgRun{
+			Caller:  caller,
+			Package: msg.Package,
+			Send:    send,
+		})
+
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)
@@ -175,7 +172,7 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
 		// Validate MsgSend fields
-		if err := msg.validateMsgSend(); err != nil {
+		if err := msg.validateMsg(); err != nil {
 			return nil, err
 		}
 
@@ -187,19 +184,12 @@ func (c *Client) Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTx
 
 		caller := c.Signer.Info().GetAddress()
 
-		// Handle no-operation messages
-		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: caller,
-			})
-		} else {
-			// Unwrap syntax sugar to vm.MsgSend slice
-			vmMsgs = append(vmMsgs, bank.MsgSend{
-				FromAddress: caller,
-				ToAddress:   msg.ToAddress,
-				Amount:      send,
-			})
-		}
+		// Unwrap syntax sugar to vm.MsgSend slice
+		vmMsgs = append(vmMsgs, bank.MsgSend{
+			FromAddress: caller,
+			ToAddress:   msg.ToAddress,
+			Amount:      send,
+		})
 	}
 
 	return c.sendTransaction(cfg, vmMsgs...)
@@ -221,7 +211,7 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 	vmMsgs := make([]std.Msg, 0, len(msgs))
 	for _, msg := range msgs {
 		// Validate MsgCall fields
-		if err := msg.validateMsgAddPackage(); err != nil {
+		if err := msg.validateMsg(); err != nil {
 			return nil, err
 		}
 
@@ -233,18 +223,96 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 
 		caller := c.Signer.Info().GetAddress()
 
-		// Handle no-operation messages
-		if msg.Noop {
-			vmMsgs = append(vmMsgs, vm.MsgNoop{
-				Caller: caller,
+		// Unwrap syntax sugar to vm.MsgAddPackage slice
+		vmMsgs = append(vmMsgs, vm.MsgAddPackage{
+			Creator: caller,
+			Package: msg.Package,
+			Deposit: deposit,
+		})
+
+	}
+
+	return c.sendTransaction(cfg, vmMsgs...)
+}
+
+// Sponsor executes one or more calls/sends/runs/addPackages on the blockchain which only deducts fee of the first signer (client.Signer)
+func (c *Client) Sponsor(cfg BaseTxCfg, msgs ...Msg) (*ctypes.ResultBroadcastTxCommit, error) {
+	// Validate required client fields.
+	if err := c.validateClient(); err != nil {
+		return nil, err
+	}
+
+	// Validate base transaction config
+	if err := cfg.validateBaseTxConfig(); err != nil {
+		return nil, err
+	}
+
+	caller := c.Signer.Info().GetAddress()
+
+	// Parse Msg slice
+	vmMsgs := make([]std.Msg, 0, len(msgs)+1)
+
+	// the first msg in list must be MsgNoop
+	vmMsgs = append(vmMsgs, vm.MsgNoop{
+		Caller: caller,
+	})
+
+	for _, msg := range msgs {
+		// Validate MsgCall fields
+		if err := msg.validateMsg(); err != nil {
+			return nil, err
+		}
+
+		// Parse send/deposit coins
+		coins, err := msg.getCoins()
+		if err != nil {
+			return nil, err
+		}
+
+		switch m := msg.(type) {
+		case MsgNoop:
+		// Ignore duplicate MsgNoop (optional)
+		// return nil, errors.New("MsgNoop already present")  // uncomment to enforce single MsgNoop
+
+		case MsgCall:
+			// Unwrap syntax sugar to vm.MsgCall slice
+			vmMsgs = append(vmMsgs, vm.MsgCall{
+				Caller:  caller,
+				PkgPath: m.PkgPath,
+				Func:    m.FuncName,
+				Args:    m.Args,
+				Send:    coins,
 			})
-		} else {
+
+		case MsgSend:
+			// Unwrap syntax sugar to vm.MsgSend slice
+			vmMsgs = append(vmMsgs, bank.MsgSend{
+				FromAddress: caller,
+				ToAddress:   m.ToAddress,
+				Amount:      coins,
+			})
+
+		case MsgRun:
+			m.Package.Name = "main"
+			m.Package.Path = ""
+
+			// Unwrap syntax sugar to vm.MsgRun slice
+			vmMsgs = append(vmMsgs, vm.MsgRun{
+				Caller:  caller,
+				Package: m.Package,
+				Send:    coins,
+			})
+
+		case MsgAddPackage:
 			// Unwrap syntax sugar to vm.MsgAddPackage slice
 			vmMsgs = append(vmMsgs, vm.MsgAddPackage{
 				Creator: caller,
-				Package: msg.Package,
-				Deposit: deposit,
+				Package: m.Package,
+				Deposit: coins,
 			})
+
+		default:
+			return nil, ErrInvalidMsgType
 		}
 	}
 

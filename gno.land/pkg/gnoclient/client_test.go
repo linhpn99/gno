@@ -179,20 +179,115 @@ func TestCallMultiple(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
-func TestSendWithNoopMsg(t *testing.T) {
-	// todo
+func TestSponsorSingle(t *testing.T) {
+	t.Parallel()
+
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("it works!"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
+
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	msg := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{""},
+		Send:     "100ugnot",
+	}
+
+	res, err := client.Sponsor(cfg, msg)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
 }
 
-func TestCallWithNoopMsg(t *testing.T) {
-	// todo
-}
+func TestSponsorMultiple(t *testing.T) {
+	t.Parallel()
 
-func TestRunWithNoopMsg(t *testing.T) {
-	// todo
-}
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("it works!"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
 
-func TestAddPackageWithNoopMsg(t *testing.T) {
-	// todo
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	msg1 := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{"hello"},
+		Send:     "100ugnot",
+	}
+
+	msg2 := MsgCall{
+		PkgPath:  "gno.land/r/demo/deep/very/deep",
+		FuncName: "Render",
+		Args:     []string{"gnoland"},
+		Send:     "100ugnot",
+	}
+
+	res, err := client.Sponsor(cfg, msg1, msg2)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
 }
 
 func TestCallErrors(t *testing.T) {

@@ -14,11 +14,7 @@ func (cfg BaseTxCfg) validateBaseTxConfig() error {
 	return nil
 }
 
-func (msg MsgCall) validateMsgCall() error {
-	if msg.Noop {
-		return nil
-	}
-
+func (msg MsgCall) validateMsg() error {
 	if msg.PkgPath == "" {
 		return ErrEmptyPkgPath
 	}
@@ -30,11 +26,16 @@ func (msg MsgCall) validateMsgCall() error {
 	return nil
 }
 
-func (msg MsgSend) validateMsgSend() error {
-	if msg.Noop {
-		return nil
+func (msg MsgCall) getCoins() (std.Coins, error) {
+	coins, err := std.ParseCoins(msg.Send)
+	if err != nil {
+		return nil, err
 	}
 
+	return coins, nil
+}
+
+func (msg MsgSend) validateMsg() error {
 	if msg.ToAddress.IsZero() {
 		return ErrInvalidToAddress
 	}
@@ -47,11 +48,16 @@ func (msg MsgSend) validateMsgSend() error {
 	return nil
 }
 
-func (msg MsgRun) validateMsgRun() error {
-	if msg.Noop {
-		return nil
+func (msg MsgSend) getCoins() (std.Coins, error) {
+	coins, err := std.ParseCoins(msg.Send)
+	if err != nil {
+		return nil, err
 	}
 
+	return coins, nil
+}
+
+func (msg MsgRun) validateMsg() error {
 	if msg.Package == nil || len(msg.Package.Files) == 0 {
 		return ErrEmptyPackage
 	}
@@ -59,14 +65,40 @@ func (msg MsgRun) validateMsgRun() error {
 	return nil
 }
 
-func (msg MsgAddPackage) validateMsgAddPackage() error {
-	if msg.Noop {
-		return nil
+func (msg MsgRun) getCoins() (std.Coins, error) {
+	coins, err := std.ParseCoins(msg.Send)
+	if err != nil {
+		return nil, err
 	}
 
+	return coins, nil
+}
+
+func (msg MsgAddPackage) validateMsg() error {
 	if msg.Package == nil || len(msg.Package.Files) == 0 {
 		return ErrEmptyPackage
 	}
 
 	return nil
+}
+
+func (msg MsgAddPackage) getCoins() (std.Coins, error) {
+	coins, err := std.ParseCoins(msg.Deposit)
+	if err != nil {
+		return nil, err
+	}
+
+	return coins, nil
+}
+
+func (msg MsgNoop) validateMsg() error {
+	if msg.Caller.IsZero() {
+		return ErrInvalidToAddress
+	}
+
+	return nil
+}
+
+func (msg MsgNoop) getCoins() (std.Coins, error) {
+	return std.Coins{}, nil
 }

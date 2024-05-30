@@ -90,7 +90,7 @@ func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTx
 		}
 
 		// Parse send coins
-		send, err := std.ParseCoins(msg.Send)
+		send, err := msg.getCoins()
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +132,7 @@ func (c *Client) Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCo
 		}
 
 		// Parse send coins
-		send, err := std.ParseCoins(msg.Send)
+		send, err := msg.getCoins()
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +214,7 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 		}
 
 		// Parse deposit coins
-		deposit, err := std.ParseCoins(msg.Deposit)
+		deposit, err := msg.getCoins()
 		if err != nil {
 			return nil, err
 		}

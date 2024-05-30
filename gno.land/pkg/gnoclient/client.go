@@ -2,6 +2,9 @@ package gnoclient
 
 import (
 	rpcclient "github.com/gnolang/gno/tm2/pkg/bft/rpc/client"
+	ctypes "github.com/gnolang/gno/tm2/pkg/bft/rpc/core/types"
+	"github.com/gnolang/gno/tm2/pkg/crypto"
+	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
 // Client provides an interface for interacting with the blockchain.
@@ -9,6 +12,26 @@ type Client struct {
 	Signer    Signer           // Signer for transaction authentication
 	RPCClient rpcclient.Client // RPC client for blockchain communication
 }
+
+// Public Client's interface
+type IClient interface {
+	Query(cfg QueryCfg) (*ctypes.ResultABCIQuery, error)
+	QueryAccount(addr crypto.Address) (*std.BaseAccount, *ctypes.ResultABCIQuery, error)
+	QueryAppVersion() (string, *ctypes.ResultABCIQuery, error)
+	Render(pkgPath string, args string) (string, *ctypes.ResultABCIQuery, error)
+	QEval(pkgPath string, expression string) (string, *ctypes.ResultABCIQuery, error)
+	Block(height int64) (*ctypes.ResultBlock, error)
+	BlockResult(height int64) (*ctypes.ResultBlockResults, error)
+	LatestBlockHeight() (int64, error)
+
+	Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTxCommit, error)
+	Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCommit, error)
+	Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTxCommit, error)
+	AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.ResultBroadcastTxCommit, error)
+	Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (*ctypes.ResultBroadcastTxCommit, error)
+}
+
+var _ IClient = (*Client)(nil)
 
 // validateSigner checks that the Client's fields are correctly configured.
 func (c *Client) validateClient() error {

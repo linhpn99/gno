@@ -8,6 +8,7 @@ import (
 	"github.com/gnolang/gno/gno.land/pkg/sdk/vm"
 	"github.com/gnolang/gno/tm2/pkg/amino"
 	"github.com/gnolang/gno/tm2/pkg/commands"
+	"github.com/gnolang/gno/tm2/pkg/crypto"
 	"github.com/gnolang/gno/tm2/pkg/crypto/keys"
 	"github.com/gnolang/gno/tm2/pkg/crypto/keys/client"
 	"github.com/gnolang/gno/tm2/pkg/errors"
@@ -21,6 +22,8 @@ type MakeCallCfg struct {
 	PkgPath  string
 	FuncName string
 	Args     commands.StringArr
+
+	Sponsoree string
 }
 
 func NewMakeCallCmd(rootCfg *client.MakeTxCfg, io commands.IO) *commands.Command {
@@ -67,6 +70,13 @@ func (c *MakeCallCfg) RegisterFlags(fs *flag.FlagSet) {
 		&c.Args,
 		"args",
 		"arguments to contract",
+	)
+
+	fs.StringVar(
+		&c.Sponsoree,
+		"sponsoree",
+		"",
+		"address of sponsoree",
 	)
 }
 
@@ -116,16 +126,34 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 		return errors.Wrap(err, "parsing gas fee coin")
 	}
 
-	// construct msg & tx and marshal.
-	msg := vm.MsgCall{
-		Caller:  caller,
-		Send:    send,
-		PkgPath: cfg.PkgPath,
-		Func:    fnc,
-		Args:    cfg.Args,
+	var msgs []std.Msg
+
+	// if a sponsoree is specified
+	if cfg.Sponsoree != "" {
+		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.Sponsoree)
+		if err != nil {
+			return errors.Wrap(err, "invalid sponsoree address")
+		}
+
+		msgs = append(msgs, vm.NewMsgNoop(caller), vm.MsgCall{
+			Caller:  sponsoreeAddress,
+			Send:    send,
+			PkgPath: cfg.PkgPath,
+			Func:    fnc,
+			Args:    cfg.Args,
+		})
+	} else {
+		msgs = append(msgs, vm.MsgCall{
+			Caller:  caller,
+			Send:    send,
+			PkgPath: cfg.PkgPath,
+			Func:    fnc,
+			Args:    cfg.Args,
+		})
 	}
+
 	tx := std.Tx{
-		Msgs:       []std.Msg{msg},
+		Msgs:       msgs,
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,

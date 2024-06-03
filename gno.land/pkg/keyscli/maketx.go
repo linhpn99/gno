@@ -16,6 +16,8 @@ type MakeTxCfg struct {
 
 	Broadcast bool
 	ChainID   string
+
+	Sponsoree string
 }
 
 func NewMakeTxCmd(rootCfg *client.BaseCfg, io commands.IO) *commands.Command {
@@ -79,5 +81,12 @@ func (c *MakeTxCfg) RegisterFlags(fs *flag.FlagSet) {
 		"chainid",
 		"dev",
 		"chainid to sign for (only useful if --broadcast)",
+	)
+
+	fs.StringVar(
+		&c.Sponsoree,
+		"sponsoree",
+		"",
+		"address of sponsoree",
 	)
 }

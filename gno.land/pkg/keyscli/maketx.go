@@ -17,6 +17,7 @@ type MakeTxCfg struct {
 	Broadcast bool
 	ChainID   string
 
+	// Optional
 	Sponsoree string
 }
 

@@ -22,8 +22,6 @@ type MakeCallCfg struct {
 	PkgPath  string
 	FuncName string
 	Args     commands.StringArr
-
-	Sponsoree string
 }
 
 func NewMakeCallCmd(rootCfg *client.MakeTxCfg, io commands.IO) *commands.Command {
@@ -70,13 +68,6 @@ func (c *MakeCallCfg) RegisterFlags(fs *flag.FlagSet) {
 		&c.Args,
 		"args",
 		"arguments to contract",
-	)
-
-	fs.StringVar(
-		&c.Sponsoree,
-		"sponsoree",
-		"",
-		"address of sponsoree",
 	)
 }
 
@@ -128,9 +119,9 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 
 	var msgs []std.Msg
 
-	// if a sponsoree is specified
-	if cfg.Sponsoree != "" {
-		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.Sponsoree)
+	// if a sponsoree address is specified
+	if cfg.RootCfg.Sponsoree != "" {
+		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsoree)
 		if err != nil {
 			return errors.Wrap(err, "invalid sponsoree address")
 		}

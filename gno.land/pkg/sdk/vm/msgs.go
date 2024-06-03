@@ -218,8 +218,8 @@ type MsgNoop struct {
 
 var _ std.Msg = MsgNoop{}
 
-func NewMsgNoop(caller crypto.Address) MsgCall {
-	return MsgCall{
+func NewMsgNoop(caller crypto.Address) MsgNoop {
+	return MsgNoop{
 		Caller: caller,
 	}
 }

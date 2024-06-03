@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/gnolang/gno/gno.land/pkg/sdk/vm"
 	"github.com/gnolang/gno/tm2/pkg/amino"
 	"github.com/gnolang/gno/tm2/pkg/commands"
 	"github.com/gnolang/gno/tm2/pkg/crypto"
@@ -105,14 +106,30 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 		return errors.Wrap(err, "parsing gas fee coin")
 	}
 
-	// construct msg & tx and marshal.
-	msg := bank.MsgSend{
-		FromAddress: fromAddr,
-		ToAddress:   toAddr,
-		Amount:      send,
+	var msgs []std.Msg
+
+	// if a sponsoree address is specified
+	if cfg.RootCfg.Sponsoree != "" {
+		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsoree)
+		if err != nil {
+			return errors.Wrap(err, "invalid sponsoree address")
+		}
+
+		msgs = append(msgs, vm.NewMsgNoop(fromAddr), bank.MsgSend{
+			FromAddress: sponsoreeAddress,
+			ToAddress:   toAddr,
+			Amount:      send,
+		})
+	} else {
+		msgs = append(msgs, bank.MsgSend{
+			FromAddress: fromAddr,
+			ToAddress:   toAddr,
+			Amount:      send,
+		})
 	}
+
 	tx := std.Tx{
-		Msgs:       []std.Msg{msg},
+		Msgs:       msgs,
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,

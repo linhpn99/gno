@@ -23,6 +23,9 @@ type MakeTxCfg struct {
 	// Valid options are SimulateTest, SimulateSkip or SimulateOnly.
 	Simulate string
 	ChainID  string
+
+	// Optional
+	Sponsoree string
 }
 
 // These are the valid options for MakeTxConfig.Simulate.
@@ -107,6 +110,13 @@ func (c *MakeTxCfg) RegisterFlags(fs *flag.FlagSet) {
 		"chainid",
 		"dev",
 		"chainid to sign for (only useful with --broadcast)",
+	)
+
+	fs.StringVar(
+		&c.Sponsoree,
+		"sponsoree",
+		"",
+		"address of sponsoree",
 	)
 }
 

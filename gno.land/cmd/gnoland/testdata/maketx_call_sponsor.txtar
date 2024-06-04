@@ -1,0 +1,30 @@
+# load the package
+loadpkg gno.land/r/foo/bar $WORK
+
+## another test user, test2
+adduser test2
+
+# start a new node
+gnoland start
+
+## execute GetCaller
+gnokey maketx call -pkgpath gno.land/r/foo/bar -func GetCaller -gas-fee 1000000ugnot -gas-wanted 2000000 --sponsoree=${USER_ADDR_test2} -broadcast -chainid=tendermint_test test1
+
+## compare GetCaller
+stdout '\("${USER_ADDR_test2}" string\)'
+stdout OK!
+stdout 'GAS WANTED: 2000000'
+stdout 'GAS USED:   \d+'
+stdout 'HEIGHT:     \d+'
+stdout 'EVENTS:     \[\]'
+
+-- realm.gno --
+package call_realm
+
+import (
+    "std"
+)
+
+func GetCaller() string {
+ 	return std.PrevRealm().Addr().String()
+}

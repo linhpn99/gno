@@ -14,14 +14,6 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
-type mockMsg struct{}
-
-func (m mockMsg) validateMsg() error { return nil }
-func (m mockMsg) getType() string    { return "mock" }
-func (m mockMsg) getCoins() (std.Coins, error) {
-	return std.NewCoins(std.MustParseCoin("1000ugnot")), nil
-}
-
 func TestRender(t *testing.T) {
 	t.Parallel()
 	testRealmPath := "gno.land/r/demo/deep/very/deep"

@@ -100,7 +100,15 @@ func TestCallSingle_Sponsor_Integration(t *testing.T) {
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
-	// Execute call
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	// Execute sponsor transaction
 	res, err := client.Sponsor(baseCfg, sponsoree, msg)
 
 	expected := "(\"hi test argument\" string)\n\n"
@@ -108,6 +116,17 @@ func TestCallSingle_Sponsor_Integration(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, got)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	assert.Equal(t, sponsoreeBefore.GetCoins(), sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
 }
 
 // Run tests
@@ -211,12 +230,31 @@ func TestCallMultiple_Sponsor_Integration(t *testing.T) {
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
-	// Execute call
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	// Execute sponsor transaction
 	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 
 	got := string(res.DeliverTx.Data)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, got)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	assert.Equal(t, sponsoreeBefore.GetCoins(), sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
 }
 
 // Run tests
@@ -287,6 +325,77 @@ func TestSendSingle_Sponsor_Integration(t *testing.T) {
 		RPCClient: rpcClient,
 	}
 
+	// Create base transaction configuration
+	baseCfg := BaseTxCfg{
+		GasFee:         "10000ugnot",
+		GasWanted:      8000000,
+		AccountNumber:  0,
+		SequenceNumber: 0,
+		Memo:           "",
+	}
+
+	// Create MsgSend configuration for a new address on the blockchain
+	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+	amount := 10
+	msg := MsgSend{
+		ToAddress: toAddress,
+		Send:      std.Coin{"ugnot", int64(amount)}.String(),
+	}
+
+	// Sponsoree is the Bech32 encoded address of the sponsored account
+	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	// Execute sponsor transaction
+	res, err := client.Sponsor(baseCfg, sponsoree, msg)
+	assert.NoError(t, err)
+	assert.Equal(t, "", string(res.DeliverTx.Data))
+
+	// Query recipient account's balance after transaction
+	account, _, err := client.QueryAccount(toAddress)
+	require.NoError(t, err)
+
+	expected := std.Coins{{"ugnot", int64(amount)}}
+	got := account.GetCoins()
+	assert.Equal(t, expected, got)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	expectedSponsoreeAfter := sponsoreeBefore.GetCoins().Sub(std.NewCoins(std.NewCoin("ugnot", int64(amount))))
+	assert.Equal(t, expectedSponsoreeAfter, sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
+}
+
+func TestSendMultiple_Integration(t *testing.T) {
+	// Set up in-memory node
+	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
+	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
+	defer node.Stop()
+
+	// Init Signer & RPCClient
+	signer := newInMemorySigner(t, "tendermint_test")
+	rpcClient, err := rpcclient.NewHTTPClient(remoteAddr)
+	require.NoError(t, err)
+
+	// Setup Client
+	client := Client{
+		Signer:    signer,
+		RPCClient: rpcClient,
+	}
+
 	// Make Tx config
 	baseCfg := BaseTxCfg{
 		GasFee:         "10000ugnot",
@@ -296,27 +405,31 @@ func TestSendSingle_Sponsor_Integration(t *testing.T) {
 		Memo:           "",
 	}
 
-	// Make Send config for a new address on the blockchain
+	// Make Msg configs
 	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
-	amount := 10
-	msg := MsgSend{
+	amount1 := 10
+	msg1 := MsgSend{
 		ToAddress: toAddress,
-		Send:      std.Coin{"ugnot", int64(amount)}.String(),
+		Send:      std.Coin{"ugnot", int64(amount1)}.String(),
 	}
 
-	// sponsoree is the Bech32 encoded address of the sponsored account
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	// Same send, different argument
+	amount2 := 20
+	msg2 := MsgSend{
+		ToAddress: toAddress,
+		Send:      std.Coin{"ugnot", int64(amount2)}.String(),
+	}
 
 	// Execute send
-	res, err := client.Sponsor(baseCfg, sponsoree, msg)
-	assert.Nil(t, err)
+	res, err := client.Send(baseCfg, msg1, msg2)
+	assert.NoError(t, err)
 	assert.Equal(t, "", string(res.DeliverTx.Data))
 
 	// Get the new account balance
-	account, _, err := client.QueryAccount(signer.Info().GetAddress())
-	assert.Nil(t, err)
+	account, _, err := client.QueryAccount(toAddress)
+	assert.NoError(t, err)
 
-	expected := std.Coins{{"ugnot", int64(amount)}}
+	expected := std.Coins{{"ugnot", int64(amount1 + amount2)}}
 	got := account.GetCoins()
 
 	assert.Equal(t, expected, got)
@@ -364,22 +477,41 @@ func TestSendMultiple_Sponsor_Integration(t *testing.T) {
 		Send:      std.Coin{"ugnot", int64(amount2)}.String(),
 	}
 
-	// sponsoree is the Bech32 encoded address of the sponsored account
+	// Sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
-	// Execute send
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	// Execute sponsor transaction
 	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 	assert.NoError(t, err)
 	assert.Equal(t, "", string(res.DeliverTx.Data))
 
-	// Get the new account balance
+	// Query recipient account's balance after transaction
 	account, _, err := client.QueryAccount(toAddress)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expected := std.Coins{{"ugnot", int64(amount1 + amount2)}}
 	got := account.GetCoins()
-
 	assert.Equal(t, expected, got)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	expectedSponsoreeAfter := sponsoreeBefore.GetCoins().Sub(std.NewCoins(std.NewCoin("ugnot", int64(amount1+amount2))))
+	assert.Equal(t, expectedSponsoreeAfter, sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
 }
 
 // Run tests
@@ -441,7 +573,7 @@ func main() {
 }
 
 // Run tests
-func TestRunSingle__Sponsor_Integration(t *testing.T) {
+func TestRunSingle_Sponsor_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
 	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
@@ -495,10 +627,31 @@ func main() {
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	// Execute sponsor transaction
 	res, err := client.Sponsor(baseCfg, sponsoree, msg)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "- before: 0\n- after: 10\n")
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	assert.Equal(t, sponsoreeBefore.GetCoins(), sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
+
 }
 
 // Run tests
@@ -653,15 +806,35 @@ func main() {
 		Send: "",
 	}
 
-	expected := "- before: 0\n- after: 10\nhi gnoclient!\n"
-
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
+	expected := "- before: 0\n- after: 10\nhi gnoclient!\n"
+
+	// Execute sponsor transaction
 	res, err := client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, expected, string(res.DeliverTx.Data))
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	assert.Equal(t, sponsoreeBefore.GetCoins(), sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
 }
 
 // Run tests
@@ -735,7 +908,7 @@ func Echo(str string) string {
 }
 
 // Run tests
-func TestAddPackageSingle__Sponsor_Integration(t *testing.T) {
+func TestAddPackageSingle_Sponsor_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
 	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
@@ -789,6 +962,14 @@ func Echo(str string) string {
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
 	// Execute AddPackage
 	_, err = client.Sponsor(baseCfg, sponsoree, msg)
 	assert.Nil(t, err)
@@ -805,6 +986,19 @@ func Echo(str string) string {
 	baseAcc, _, err := client.QueryAccount(gnolang.DerivePkgAddr(deploymentPath))
 	require.NoError(t, err)
 	assert.Equal(t, baseAcc.GetCoins().String(), deposit)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	expectedSponsoreeAfter := sponsoreeBefore.GetCoins().Sub(std.MustParseCoins(deposit))
+	assert.Equal(t, expectedSponsoreeAfter, sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
+
 }
 
 // Run tests
@@ -915,7 +1109,7 @@ func Hello(str string) string {
 }
 
 // Run tests
-func TestAddPackageMultiple__Sponsor_Integration(t *testing.T) {
+func TestAddPackageMultiple_Sponsor_Integration(t *testing.T) {
 	// Set up in-memory node
 	config, _ := integration.TestingNodeConfig(t, gnoenv.RootDir())
 	node, remoteAddr := integration.TestingInMemoryNode(t, log.NewNoopLogger(), config)
@@ -992,6 +1186,14 @@ func Hello(str string) string {
 	// sponsoree is the Bech32 encoded address of the sponsored account
 	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
 
+	// Query sponsoree's balance before transaction
+	sponsoreeBefore, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+
+	// Query sponsor's balance before transaction
+	sponsorBefore, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+
 	// Execute AddPackage
 	_, err = client.Sponsor(baseCfg, sponsoree, msg1, msg2)
 	assert.Nil(t, err)
@@ -1022,6 +1224,18 @@ func Hello(str string) string {
 	baseAcc, _, err = client.QueryAccount(gnolang.DerivePkgAddr(deploymentPath2))
 	require.NoError(t, err)
 	assert.Equal(t, baseAcc.GetCoins().String(), deposit)
+
+	// Query sponsoree's balance after transaction
+	sponsoreeAfter, _, err := client.QueryAccount(sponsoree)
+	require.NoError(t, err)
+	expectedSponsoreeAfter := sponsoreeBefore.GetCoins().Sub(std.MustParseCoins(deposit))
+	assert.Equal(t, expectedSponsoreeAfter, sponsoreeAfter.GetCoins())
+
+	// Query sponsor's balance after transaction
+	sponsorAfter, _, err := client.QueryAccount(client.Signer.Info().GetAddress())
+	require.NoError(t, err)
+	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
+	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
 }
 
 // todo add more integration tests:

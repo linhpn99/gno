@@ -14,6 +14,14 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
+type mockMsg struct{}
+
+func (m mockMsg) validateMsg() error { return nil }
+func (m mockMsg) getType() string    { return "mock" }
+func (m mockMsg) getCoins() (std.Coins, error) {
+	return std.NewCoins(std.MustParseCoin("1000ugnot")), nil
+}
+
 func TestRender(t *testing.T) {
 	t.Parallel()
 	testRealmPath := "gno.land/r/demo/deep/very/deep"
@@ -881,7 +889,7 @@ func TestSendErrors(t *testing.T) {
 					Send:      "-1ugnot",
 				},
 			},
-			expectedError: ErrInvalidSendAmount,
+			expectedError: ErrInvalidAmount,
 		},
 	}
 
@@ -1385,6 +1393,141 @@ func TestRunErrors(t *testing.T) {
 	}
 }
 
+// Run tests
+func TestAddPackageSingle(t *testing.T) {
+	t.Parallel()
+
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("hi gnoclient!\n"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
+
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	msg := MsgAddPackage{
+		Package: &std.MemPackage{
+			Name: "hello",
+			Path: "gno.land/p/demo/hello",
+			Files: []*std.MemFile{
+				{
+					Name: "file1.gno",
+					Body: "",
+				},
+			},
+		},
+		Deposit: "",
+	}
+
+	res, err := client.AddPackage(cfg, msg)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, "hi gnoclient!\n", string(res.DeliverTx.Data))
+}
+
+// Run tests
+func TestAddPackageMultiple(t *testing.T) {
+	t.Parallel()
+
+	client := Client{
+		Signer: &mockSigner{
+			sign: func(cfg SignCfg) (*std.Tx, error) {
+				return &std.Tx{}, nil
+			},
+			info: func() keys.Info {
+				return &mockKeysInfo{
+					getAddress: func() crypto.Address {
+						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+						return adr
+					},
+				}
+			},
+		},
+		RPCClient: &mockRPCClient{
+			broadcastTxCommit: func(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+				res := &ctypes.ResultBroadcastTxCommit{
+					DeliverTx: abci.ResponseDeliverTx{
+						ResponseBase: abci.ResponseBase{
+							Data: []byte("hi gnoclient!\n"),
+						},
+					},
+				}
+				return res, nil
+			},
+		},
+	}
+
+	cfg := BaseTxCfg{
+		GasWanted:      100000,
+		GasFee:         "10000ugnot",
+		AccountNumber:  1,
+		SequenceNumber: 1,
+		Memo:           "Test memo",
+	}
+
+	msgs := []MsgAddPackage{
+		{
+			Package: &std.MemPackage{
+				Name: "hello",
+				Path: "gno.land/p/demo/hello",
+				Files: []*std.MemFile{
+					{
+						Name: "file1.gno",
+						Body: "",
+					},
+				},
+			},
+			Deposit: "",
+		},
+		{
+			Package: &std.MemPackage{
+				Name: "goodbye",
+				Path: "gno.land/p/demo/goodbye",
+				Files: []*std.MemFile{
+					{
+						Name: "file1.gno",
+						Body: "",
+					},
+				},
+			},
+			Deposit: "",
+		},
+	}
+
+	res, err := client.AddPackage(cfg, msgs...)
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, "hi gnoclient!\n", string(res.DeliverTx.Data))
+}
+
 // AddPackage tests
 func TestAddPackageErrors(t *testing.T) {
 	t.Parallel()
@@ -1576,189 +1719,222 @@ func TestAddPackageErrors(t *testing.T) {
 	}
 }
 
-// Block tests
-func TestBlock(t *testing.T) {
+func TestSponsorErrors(t *testing.T) {
 	t.Parallel()
 
-	height := int64(5)
-	client := &Client{
-		Signer: &mockSigner{},
-		RPCClient: &mockRPCClient{
-			block: func(height *int64) (*ctypes.ResultBlock, error) {
-				return &ctypes.ResultBlock{
-					BlockMeta: &types.BlockMeta{
-						BlockID: types.BlockID{},
-						Header:  types.Header{},
+	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
+	testCases := []struct {
+		name          string
+		client        Client
+		cfg           BaseTxCfg
+		msgs          []Msg
+		expectedError error
+	}{
+		{
+			name: "Invalid Client",
+			client: Client{
+				Signer:    nil,
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      100000,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				MsgSend{
+					ToAddress: toAddress,
+					Send:      "1ugnot",
+				},
+			},
+			expectedError: ErrMissingSigner,
+		},
+		{
+			name: "Invalid BaseTxCfg",
+			client: Client{
+				Signer:    &mockSigner{},
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      -1,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				MsgSend{
+					ToAddress: toAddress,
+					Send:      "1ugnot",
+				},
+			},
+			expectedError: ErrInvalidGasWanted,
+		},
+		{
+			name: "Empty message list",
+			client: Client{
+				Signer:    &mockSigner{},
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      100000,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs:          nil,
+			expectedError: ErrNoMessages,
+		},
+		{
+			name: "Mixed messages",
+			client: Client{
+				Signer: &mockSigner{
+					info: func() keys.Info {
+						return &mockKeysInfo{
+							getAddress: func() crypto.Address {
+								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+								return adr
+							},
+						}
 					},
-					Block: &types.Block{
-						Header: types.Header{
-							Height: *height,
+				},
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      1,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				MsgCall{
+					PkgPath:  "gno.land/r/demo/tamagotchi",
+					FuncName: "Feed",
+					Args:     []string{""},
+					Send:     "",
+				},
+				MsgSend{
+					ToAddress: toAddress,
+					Send:      "1ugnot",
+				},
+			},
+			expectedError: ErrMixedMessageTypes,
+		},
+		{
+			name: "Invalid message",
+			client: Client{
+				Signer: &mockSigner{
+					info: func() keys.Info {
+						return &mockKeysInfo{
+							getAddress: func() crypto.Address {
+								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+								return adr
+							},
+						}
+					},
+				},
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      1,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				MsgCall{
+					PkgPath:  "",
+					FuncName: "Feed",
+					Args:     []string{""},
+					Send:     "",
+				},
+			},
+			expectedError: ErrEmptyPkgPath,
+		},
+		{
+			name: "Error parsing coin from message",
+			client: Client{
+				Signer: &mockSigner{
+					info: func() keys.Info {
+						return &mockKeysInfo{
+							getAddress: func() crypto.Address {
+								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+								return adr
+							},
+						}
+					},
+				},
+				RPCClient: &mockRPCClient{},
+			},
+			cfg: BaseTxCfg{
+				GasWanted:      100000,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				MsgAddPackage{
+					Package: &std.MemPackage{
+						Name: "",
+						Path: "",
+						Files: []*std.MemFile{
+							{
+								Name: "file1.gno",
+								Body: "",
+							},
 						},
-						Data:       types.Data{},
-						LastCommit: nil,
 					},
-				}, nil
+					Deposit: "xxx", // invalid denom
+				},
 			},
-		},
-	}
-
-	block, err := client.Block(height)
-	require.NoError(t, err)
-	assert.Equal(t, height, block.Block.GetHeight())
-}
-
-func TestBlockResults(t *testing.T) {
-	t.Parallel()
-
-	height := int64(5)
-	client := &Client{
-		Signer: &mockSigner{},
-		RPCClient: &mockRPCClient{
-			blockResults: func(height *int64) (*ctypes.ResultBlockResults, error) {
-				return &ctypes.ResultBlockResults{
-					Height:  *height,
-					Results: nil,
-				}, nil
-			},
-		},
-	}
-
-	blockResult, err := client.BlockResult(height)
-	require.NoError(t, err)
-	assert.Equal(t, height, blockResult.Height)
-}
-
-func TestLatestBlockHeight(t *testing.T) {
-	t.Parallel()
-
-	latestHeight := int64(5)
-
-	client := &Client{
-		Signer: &mockSigner{},
-		RPCClient: &mockRPCClient{
-			status: func() (*ctypes.ResultStatus, error) {
-				return &ctypes.ResultStatus{
-					SyncInfo: ctypes.SyncInfo{
-						LatestBlockHeight: latestHeight,
-					},
-				}, nil
-			},
-		},
-	}
-
-	head, err := client.LatestBlockHeight()
-	require.NoError(t, err)
-	assert.Equal(t, latestHeight, head)
-}
-
-func TestBlockErrors(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name          string
-		client        Client
-		height        int64
-		expectedError error
-	}{
-		{
-			name: "Invalid RPCClient",
-			client: Client{
-				&mockSigner{},
-				nil,
-			},
-			height:        1,
-			expectedError: ErrMissingRPCClient,
+			expectedError: ErrInvalidAmount,
 		},
 		{
-			name: "Invalid height",
+			name: "Invalid message type",
 			client: Client{
-				&mockSigner{},
-				&mockRPCClient{},
+				Signer: &mockSigner{
+					info: func() keys.Info {
+						return &mockKeysInfo{
+							getAddress: func() crypto.Address {
+								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
+								return adr
+							},
+						}
+					},
+				},
+				RPCClient: &mockRPCClient{},
 			},
-			height:        0,
-			expectedError: ErrInvalidBlockHeight,
+			cfg: BaseTxCfg{
+				GasWanted:      100000,
+				GasFee:         "10000ugnot",
+				AccountNumber:  1,
+				SequenceNumber: 1,
+				Memo:           "Test memo",
+			},
+			msgs: []Msg{
+				mockMsg{},
+			},
+			expectedError: ErrInvalidMsgType,
 		},
 	}
+
+	sponsorAddress, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			res, err := tc.client.Block(tc.height)
+			res, err := tc.client.Sponsor(tc.cfg, sponsorAddress, tc.msgs...)
 			assert.Nil(t, res)
 			assert.ErrorIs(t, err, tc.expectedError)
-		})
-	}
-}
 
-func TestBlockResultErrors(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name          string
-		client        Client
-		height        int64
-		expectedError error
-	}{
-		{
-			name: "Invalid RPCClient",
-			client: Client{
-				&mockSigner{},
-				nil,
-			},
-			height:        1,
-			expectedError: ErrMissingRPCClient,
-		},
-		{
-			name: "Invalid height",
-			client: Client{
-				&mockSigner{},
-				&mockRPCClient{},
-			},
-			height:        0,
-			expectedError: ErrInvalidBlockHeight,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			res, err := tc.client.BlockResult(tc.height)
-			assert.Nil(t, res)
-			assert.ErrorIs(t, err, tc.expectedError)
-		})
-	}
-}
-
-func TestLatestBlockHeightErrors(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name          string
-		client        Client
-		expectedError error
-	}{
-		{
-			name: "Invalid RPCClient",
-			client: Client{
-				&mockSigner{},
-				nil,
-			},
-			expectedError: ErrMissingRPCClient,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			res, err := tc.client.LatestBlockHeight()
-			assert.Equal(t, int64(0), res)
-			assert.ErrorIs(t, err, tc.expectedError)
 		})
 	}
 }

@@ -10,60 +10,6 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
-// Define various error messages for different validation failures
-var (
-	ErrEmptyPackage      = errors.New("empty package to run")
-	ErrEmptyPkgPath      = errors.New("empty pkg path")
-	ErrEmptyFuncName     = errors.New("empty function name")
-	ErrInvalidGasWanted  = errors.New("invalid gas wanted")
-	ErrInvalidGasFee     = errors.New("invalid gas fee")
-	ErrMissingSigner     = errors.New("missing Signer")
-	ErrMissingRPCClient  = errors.New("missing RPCClient")
-	ErrInvalidToAddress  = errors.New("invalid send to address")
-	ErrInvalidSendAmount = errors.New("invalid send amount")
-	ErrInvalidMsgType    = errors.New("invalid msg type")
-)
-
-// BaseTxCfg defines the base transaction configuration, shared by all message types
-type BaseTxCfg struct {
-	GasFee         string // Gas fee
-	GasWanted      int64  // Gas wanted
-	AccountNumber  uint64 // Account number
-	SequenceNumber uint64 // Sequence number
-	Memo           string // Memo
-}
-
-// MsgCall - syntax sugar for vm.MsgCall
-type MsgCall struct {
-	PkgPath  string   // Package path
-	FuncName string   // Function name
-	Args     []string // Function arguments
-	Send     string   // Send amount
-}
-
-// MsgSend - syntax sugar for bank.MsgSend
-type MsgSend struct {
-	ToAddress crypto.Address // Send to address
-	Send      string         // Send amount
-}
-
-// MsgRun - syntax sugar for vm.MsgRun
-type MsgRun struct {
-	Package *std.MemPackage // Package to run
-	Send    string          // Send amount
-}
-
-// MsgAddPackage - syntax sugar for vm.MsgAddPackage
-type MsgAddPackage struct {
-	Package *std.MemPackage // Package to add
-	Deposit string          // Coin deposit
-}
-
-type Msg interface {
-	validateMsg() error
-	getCoins() (std.Coins, error)
-}
-
 // Call executes one or more MsgCall calls on the blockchain
 func (c *Client) Call(cfg BaseTxCfg, msgs ...MsgCall) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields.
@@ -238,6 +184,14 @@ func (c *Client) Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (
 		return nil, err
 	}
 
+	// Ensure at least one message is provided
+	if len(msgs) == 0 {
+		return nil, ErrNoMessages
+	}
+
+	// Determine the type of the first user-provided message
+	firstMsgType := msgs[0].getType()
+
 	// Parse Msg slice
 	vmMsgs := make([]std.Msg, 0, len(msgs)+1)
 
@@ -247,7 +201,12 @@ func (c *Client) Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (
 	})
 
 	for _, msg := range msgs {
-		// Validate MsgCall fields
+		// Check if all messages are of the same type
+		if msg.getType() != firstMsgType {
+			return nil, ErrMixedMessageTypes
+		}
+
+		// Validate msg's fields
 		if err := msg.validateMsg(); err != nil {
 			return nil, err
 		}

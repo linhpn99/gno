@@ -1934,7 +1934,6 @@ func TestSponsorErrors(t *testing.T) {
 			res, err := tc.client.Sponsor(tc.cfg, sponsorAddress, tc.msgs...)
 			assert.Nil(t, res)
 			assert.ErrorIs(t, err, tc.expectedError)
-
 		})
 	}
 }

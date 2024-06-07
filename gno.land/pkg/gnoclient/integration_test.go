@@ -651,7 +651,6 @@ func main() {
 	require.NoError(t, err)
 	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
 	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
-
 }
 
 // Run tests
@@ -998,7 +997,6 @@ func Echo(str string) string {
 	require.NoError(t, err)
 	expectedSponsorAfter := sponsorBefore.GetCoins().Sub(std.MustParseCoins(baseCfg.GasFee))
 	assert.Equal(t, expectedSponsorAfter, sponsorAfter.GetCoins())
-
 }
 
 // Run tests

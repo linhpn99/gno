@@ -90,15 +90,3 @@ func (msg MsgAddPackage) getCoins() (std.Coins, error) {
 
 	return coins, nil
 }
-
-func (msg MsgNoop) validateMsg() error {
-	if msg.Caller.IsZero() {
-		return ErrInvalidToAddress
-	}
-
-	return nil
-}
-
-func (msg MsgNoop) getCoins() (std.Coins, error) {
-	return std.Coins{}, nil
-}

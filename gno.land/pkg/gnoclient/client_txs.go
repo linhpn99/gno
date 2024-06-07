@@ -59,11 +59,6 @@ type MsgAddPackage struct {
 	Deposit string          // Coin deposit
 }
 
-// MsgNoop - syntax sugar for vm.NoopMsg
-type MsgNoop struct {
-	Caller crypto.Address
-}
-
 type Msg interface {
 	validateMsg() error
 	getCoins() (std.Coins, error)
@@ -264,10 +259,6 @@ func (c *Client) Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (
 		}
 
 		switch m := msg.(type) {
-		case MsgNoop:
-		// Ignore duplicate MsgNoop (optional)
-		// return nil, errors.New("MsgNoop already present")  // uncomment to enforce single MsgNoop
-
 		case MsgCall:
 			// Unwrap syntax sugar to vm.MsgCall slice
 			vmMsgs = append(vmMsgs, vm.MsgCall{

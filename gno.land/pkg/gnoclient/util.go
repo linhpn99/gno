@@ -20,6 +20,7 @@ var (
 	ErrInvalidMsgType    = errors.New("invalid msg type")
 	ErrNoMessages        = errors.New("no messages provided")
 	ErrMixedMessageTypes = errors.New("mixed message types not allowed")
+	ErrNoSignatures      = errors.New("no signatures provided")
 )
 
 // Constants for different message types.

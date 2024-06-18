@@ -165,10 +165,10 @@ func TestCallSingle_Sponsor(t *testing.T) {
 		Send:     "100ugnot",
 	}
 
-	sponsorTx, err := client.NewSponsorTransaction(cfg, msg)
+	presignedTx, err := client.NewSponsorTransaction(cfg, msg)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*sponsorTx)
+	res, err := client.ExecuteSponsorTransaction(*presignedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -317,7 +317,7 @@ func TestCallMultiple_Sponsor(t *testing.T) {
 	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 
 	assert.NoError(t, err)
 	require.NotNil(t, res)
@@ -620,7 +620,7 @@ func TestSendSingle_Sponsor(t *testing.T) {
 	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 
 	assert.NoError(t, err)
 	require.NotNil(t, res)
@@ -748,7 +748,7 @@ func TestSendMultiple_Sponsor(t *testing.T) {
 	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -1085,7 +1085,7 @@ func main() {
 	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\n", string(res.DeliverTx.Data))
@@ -1256,7 +1256,7 @@ func main() {
 	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\nhi gnoclient!\n", string(res.DeliverTx.Data))
@@ -1921,7 +1921,7 @@ func TestSponsorTransactionErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			res, err := tc.client.ExecuteSponsorTransaction(tc.presignedTx)
+			res, err := tc.client.ExecuteSponsorTransaction(tc.presignedTx, tc.cfg.AccountNumber, tc.cfg.SequenceNumber)
 			assert.Nil(t, res)
 			assert.Contains(t, err.Error(), tc.expectedError.Error())
 		})

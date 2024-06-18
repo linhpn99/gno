@@ -125,13 +125,8 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 			Memo:       cfg.RootCfg.Memo,
 		}
 
-		err = ExecSign(cfg.RootCfg, args, tx, io)
-		if err != nil {
-			return err
-		}
-
 		if cfg.RootCfg.Broadcast {
-			return ExecBroadcast(cfg.RootCfg, tx, io)
+			return ExecSignAndBroadcast(cfg.RootCfg, args, tx, io)
 		}
 
 		io.Println(string(amino.MustMarshalJSON(tx)))

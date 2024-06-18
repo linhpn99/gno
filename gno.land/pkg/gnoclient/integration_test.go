@@ -117,7 +117,7 @@ func TestCallSingle_Sponsor_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Execute sponsor transaction
-	res, err := client.ExecuteSponsorTransaction(*presignedTx)
+	res, err := client.ExecuteSponsorTransaction(*presignedTx, 0, 0)
 	require.NoError(t, err)
 
 	expected := "(\"hi test argument\" string)\n\n"

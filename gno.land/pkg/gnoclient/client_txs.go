@@ -321,18 +321,28 @@ func (c *Client) NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, 
 	}
 
 	// Pack transaction
-	tx := std.Tx{
+	tx := &std.Tx{
 		Msgs:       vmMsgs,
 		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
 		Signatures: nil,
 		Memo:       cfg.Memo,
 	}
 
-	return c.SignTx(tx, cfg.AccountNumber, cfg.SequenceNumber)
+	return tx, nil
 }
 
 // SignTx signs a transaction using the client's signer
 func (c *Client) SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error) {
+	if sequenceNumber == 0 || accountNumber == 0 {
+		caller := c.Signer.Info().GetAddress()
+		account, _, err := c.QueryAccount(caller)
+		if err != nil {
+			return nil, errors.Wrap(err, "query account")
+		}
+		accountNumber = account.AccountNumber
+		sequenceNumber = account.Sequence
+	}
+
 	// Ensure sequence number and account number are provided
 	signCfg := SignCfg{
 		Tx:             tx,
@@ -351,7 +361,7 @@ func (c *Client) SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.T
 // ExecuteSponsorTransaction allows broadcasting a pre-signed transaction (represented by `sponsorTx`)
 // using the signer's account to pay transaction fees. The `sponsoree` account who signed `the sponsorTx“ before benefits
 // from this transaction without incurring any gas costs
-func (c *Client) ExecuteSponsorTransaction(tx std.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) ExecuteSponsorTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields
 	if err := c.validateClient(); err != nil {
 		return nil, err
@@ -372,26 +382,11 @@ func (c *Client) ExecuteSponsorTransaction(tx std.Tx) (*ctypes.ResultBroadcastTx
 		return nil, ErrInvalidSponsorTx
 	}
 
-	acc, _, err := c.QueryAccount(c.Signer.Info().GetAddress())
-	if err != nil {
-		return nil, err
-	}
-
-	return c.signAndBroadcastTxCommit(tx, acc.AccountNumber, acc.Sequence)
+	return c.signAndBroadcastTxCommit(tx, accountNumber, sequenceNumber)
 }
 
 // signAndBroadcastTxCommit signs a transaction and broadcasts it, returning the result
 func (c *Client) signAndBroadcastTxCommit(tx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error) {
-	if sequenceNumber == 0 || accountNumber == 0 {
-		caller := c.Signer.Info().GetAddress()
-		account, _, err := c.QueryAccount(caller)
-		if err != nil {
-			return nil, errors.Wrap(err, "query account")
-		}
-		accountNumber = account.AccountNumber
-		sequenceNumber = account.Sequence
-	}
-
 	signedTx, err := c.SignTx(tx, accountNumber, sequenceNumber)
 	if err != nil {
 		return nil, errors.Wrap(err, "sign")

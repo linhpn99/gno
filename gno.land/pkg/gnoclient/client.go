@@ -31,7 +31,7 @@ type IClient interface {
 
 	NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, error)
 	SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error)
-	ExecuteSponsorTransaction(presignedTx std.Tx) (*ctypes.ResultBroadcastTxCommit, error)
+	ExecuteSponsorTransaction(presignedTx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error)
 }
 
 var _ IClient = (*Client)(nil)

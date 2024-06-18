@@ -23,6 +23,7 @@ var (
 	ErrNoSignatures      = errors.New("no signatures provided")
 
 	ErrInvalidSponsorAddress = errors.New("invalid sponsor address")
+	ErrInvalidSponsorTx      = errors.New("invalid sponsor tx")
 )
 
 // Constants for different message types.

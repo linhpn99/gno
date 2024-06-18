@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gnolang/gno/tm2/pkg/amino"
-	types "github.com/gnolang/gno/tm2/pkg/bft/rpc/core/types"
 	"github.com/gnolang/gno/tm2/pkg/commands"
 	"github.com/gnolang/gno/tm2/pkg/crypto/keys"
 	"github.com/gnolang/gno/tm2/pkg/errors"
@@ -25,7 +24,7 @@ type MakeTxCfg struct {
 	ChainID  string
 
 	// Optional
-	Sponsoree string
+	Sponsor string
 }
 
 // These are the valid options for MakeTxConfig.Simulate.
@@ -92,7 +91,7 @@ func (c *MakeTxCfg) RegisterFlags(fs *flag.FlagSet) {
 		&c.Broadcast,
 		"broadcast",
 		false,
-		"sign, simulate and broadcast",
+		"simulate and broadcast",
 	)
 
 	fs.StringVar(
@@ -113,30 +112,30 @@ func (c *MakeTxCfg) RegisterFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(
-		&c.Sponsoree,
-		"sponsoree",
+		&c.Sponsor,
+		"sponsor",
 		"",
-		"address of sponsoree",
+		"onchain address of the sponsor",
 	)
 }
 
-func SignAndBroadcastHandler(
+func SignHandler(
 	cfg *MakeTxCfg,
 	nameOrBech32 string,
-	tx std.Tx,
+	tx *std.Tx,
 	pass string,
-) (*types.ResultBroadcastTxCommit, error) {
+) error {
 	baseopts := cfg.RootCfg
 	txopts := cfg
 
 	kb, err := keys.NewKeyBaseFromDir(cfg.RootCfg.Home)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	info, err := kb.GetByNameOrAddress(nameOrBech32)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	accountAddr := info.GetAddress()
 
@@ -146,12 +145,12 @@ func SignAndBroadcastHandler(
 	}
 	qres, err := QueryHandler(qopts)
 	if err != nil {
-		return nil, errors.Wrap(err, "query account")
+		return errors.Wrap(err, "query account")
 	}
 	var qret struct{ BaseAccount std.BaseAccount }
 	err = amino.UnmarshalJSON(qres.Response.Data, &qret)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// sign tx
@@ -169,28 +168,18 @@ func SignAndBroadcastHandler(
 		decryptPass: pass,
 	}
 
-	if err := signTx(&tx, kb, sOpts, kOpts); err != nil {
-		return nil, fmt.Errorf("unable to sign transaction, %w", err)
+	if err := signTx(tx, kb, sOpts, kOpts); err != nil {
+		return fmt.Errorf("unable to sign transaction, %w", err)
 	}
 
-	// broadcast signed tx
-	bopts := &BroadcastCfg{
-		RootCfg: baseopts,
-		tx:      &tx,
-
-		DryRun:       cfg.Simulate == SimulateOnly,
-		testSimulate: cfg.Simulate == SimulateTest,
-	}
-
-	return BroadcastHandler(bopts)
+	return nil
 }
 
-func ExecSignAndBroadcast(
-	cfg *MakeTxCfg,
+func ExecSign(cfg *MakeTxCfg,
 	args []string,
-	tx std.Tx,
-	io commands.IO,
-) error {
+	tx *std.Tx,
+	io commands.IO) error {
+
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -212,7 +201,20 @@ func ExecSignAndBroadcast(
 		return err
 	}
 
-	bres, err := SignAndBroadcastHandler(cfg, nameOrBech32, tx, pass)
+	return SignHandler(cfg, nameOrBech32, tx, pass)
+}
+
+func ExecBroadcast(cfg *MakeTxCfg, tx *std.Tx, io commands.IO) error {
+	// broadcast signed tx
+	bopts := &BroadcastCfg{
+		RootCfg: cfg.RootCfg,
+		tx:      tx,
+
+		DryRun:       cfg.Simulate == SimulateOnly,
+		testSimulate: cfg.Simulate == SimulateTest,
+	}
+
+	bres, err := BroadcastHandler(bopts)
 	if err != nil {
 		return errors.Wrap(err, "broadcast tx")
 	}
@@ -231,4 +233,18 @@ func ExecSignAndBroadcast(
 	io.Println("EVENTS:    ", string(bres.DeliverTx.EncodeEvents()))
 
 	return nil
+}
+
+func ExecSignAndBroadcast(
+	cfg *MakeTxCfg,
+	args []string,
+	tx *std.Tx,
+	io commands.IO,
+) error {
+	err := ExecSign(cfg, args, tx, io)
+	if err != nil {
+		return err
+	}
+
+	return ExecBroadcast(cfg, tx, io)
 }

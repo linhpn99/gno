@@ -104,6 +104,7 @@ func TestCallSingle_Sponsor_Integration(t *testing.T) {
 		Memo: "x",
 	}
 
+	// Sponsoree address doesn't exist onchain
 	presignedTx, err := sponsoree.Sign(SignCfg{
 		Tx:             *sponsorTx,
 		SequenceNumber: 0,

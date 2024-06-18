@@ -107,9 +107,9 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 
 	var msgs []std.Msg
 
-	// if a sponsoree address is specified
-	if cfg.RootCfg.Sponsoree != "" {
-		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsoree)
+	// if a sponsor onchain address is specified
+	if cfg.RootCfg.Sponsor != "" {
+		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsor)
 		if err != nil {
 			return errors.Wrap(err, "invalid sponsoree address")
 		}
@@ -119,15 +119,40 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 			ToAddress:   toAddr,
 			Amount:      send,
 		})
-	} else {
-		msgs = append(msgs, bank.MsgSend{
-			FromAddress: fromAddr,
-			ToAddress:   toAddr,
-			Amount:      send,
-		})
+
+		tx := &std.Tx{
+			Msgs:       msgs,
+			Fee:        std.NewFee(gaswanted, gasfee),
+			Signatures: nil,
+			Memo:       cfg.RootCfg.Memo,
+		}
+
+		err = ExecSign(cfg.RootCfg, args, tx, io)
+		if err != nil {
+			return err
+		}
+
+		if cfg.RootCfg.Broadcast {
+			err = ExecBroadcast(cfg.RootCfg, tx, io)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		io.Println(string(amino.MustMarshalJSON(tx)))
+
+		return nil
 	}
 
-	tx := std.Tx{
+	msgs = append(msgs, bank.MsgSend{
+		FromAddress: fromAddr,
+		ToAddress:   toAddr,
+		Amount:      send,
+	})
+
+	tx := &std.Tx{
 		Msgs:       msgs,
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
@@ -142,5 +167,6 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 	} else {
 		io.Println(string(amino.MustMarshalJSON(tx)))
 	}
+
 	return nil
 }

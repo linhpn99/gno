@@ -167,13 +167,10 @@ func TestCallSingle_Sponsor(t *testing.T) {
 		Send:     "100ugnot",
 	}
 
-	tx, err := client.NewSponsorTransaction(cfg, msg)
+	sponsorTx, err := client.NewSponsorTransaction(cfg, msg)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
-	assert.NoError(t, err)
-
-	res, err := client.ExecuteSponsorTransaction(*signedTx)
+	res, err := client.ExecuteSponsorTransaction(*sponsorTx)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")

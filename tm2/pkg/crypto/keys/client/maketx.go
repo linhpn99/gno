@@ -139,23 +139,31 @@ func SignHandler(
 	}
 	accountAddr := info.GetAddress()
 
+	var accountNumber uint64 = 0
+	var sequence uint64 = 0
+
 	qopts := &QueryCfg{
 		RootCfg: baseopts,
 		Path:    fmt.Sprintf("auth/accounts/%s", accountAddr),
 	}
+
 	qres, err := QueryHandler(qopts)
 	if err != nil {
-		return errors.Wrap(err, "query account")
-	}
-	var qret struct{ BaseAccount std.BaseAccount }
-	err = amino.UnmarshalJSON(qres.Response.Data, &qret)
-	if err != nil {
-		return err
-	}
+		if !tx.IsSponsorship() {
+			return errors.Wrap(err, "query account")
+		}
+	} else {
+		var qret struct {
+			BaseAccount std.BaseAccount
+		}
 
-	// sign tx
-	accountNumber := qret.BaseAccount.AccountNumber
-	sequence := qret.BaseAccount.Sequence
+		err = amino.UnmarshalJSON(qres.Response.Data, &qret)
+		if err != nil {
+			return err
+		}
+		accountNumber = qret.BaseAccount.AccountNumber
+		sequence = qret.BaseAccount.Sequence
+	}
 
 	sOpts := signOpts{
 		chainID:         txopts.ChainID,
@@ -163,6 +171,7 @@ func SignHandler(
 		accountNumber:   accountNumber,
 	}
 
+	// sign tx
 	kOpts := keyOpts{
 		keyName:     nameOrBech32,
 		decryptPass: pass,

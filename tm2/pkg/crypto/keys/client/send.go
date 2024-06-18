@@ -105,8 +105,6 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 		return errors.Wrap(err, "parsing gas fee coin")
 	}
 
-	var msgs []std.Msg
-
 	msg := bank.MsgSend{
 		FromAddress: fromAddr,
 		ToAddress:   toAddr,
@@ -114,16 +112,14 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 	}
 
 	// if a sponsor onchain address is specified
-	if cfg.RootCfg.Sponsor != "" {
+	if cfg.RootCfg.Sponsor != "" && !cfg.RootCfg.Broadcast {
 		sponsorAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsor)
 		if err != nil {
 			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		msgs = append(msgs, vm.NewMsgNoop(sponsorAddress), msg)
-
 		tx := &std.Tx{
-			Msgs:       msgs,
+			Msgs:       []std.Msg{vm.NewMsgNoop(sponsorAddress), msg},
 			Fee:        std.NewFee(gaswanted, gasfee),
 			Signatures: nil,
 			Memo:       cfg.RootCfg.Memo,
@@ -143,10 +139,8 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 		return nil
 	}
 
-	msgs = append(msgs, msg)
-
 	tx := &std.Tx{
-		Msgs:       msgs,
+		Msgs:       []std.Msg{msg},
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,

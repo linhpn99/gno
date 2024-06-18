@@ -114,8 +114,6 @@ func execMakeRun(cfg *MakeRunCfg, args []string, cmdio commands.IO) error {
 	// Set to empty; this will be automatically set by the VM keeper.
 	memPkg.Path = ""
 
-	var msgs []std.Msg
-
 	msg := vm.MsgRun{
 		Caller:  caller,
 		Package: memPkg,
@@ -128,10 +126,8 @@ func execMakeRun(cfg *MakeRunCfg, args []string, cmdio commands.IO) error {
 			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		msgs = append(msgs, vm.NewMsgNoop(sponsorAddress), msg)
-
 		tx := &std.Tx{
-			Msgs:       msgs,
+			Msgs:       []std.Msg{vm.NewMsgNoop(sponsorAddress), msg},
 			Fee:        std.NewFee(gaswanted, gasfee),
 			Signatures: nil,
 			Memo:       cfg.RootCfg.Memo,
@@ -151,10 +147,8 @@ func execMakeRun(cfg *MakeRunCfg, args []string, cmdio commands.IO) error {
 		return nil
 	}
 
-	msgs = append(msgs, msg)
-
 	tx := &std.Tx{
-		Msgs:       msgs,
+		Msgs:       []std.Msg{msg},
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,

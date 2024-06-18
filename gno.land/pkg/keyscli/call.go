@@ -116,8 +116,6 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 		return errors.Wrap(err, "parsing gas fee coin")
 	}
 
-	var msgs []std.Msg
-
 	msg := vm.MsgCall{
 		Caller:  caller,
 		Send:    send,
@@ -133,10 +131,8 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		msgs = append(msgs, vm.NewMsgNoop(sponsorAddress), msg)
-
 		tx := &std.Tx{
-			Msgs:       msgs,
+			Msgs:       []std.Msg{vm.NewMsgNoop(sponsorAddress), msg},
 			Fee:        std.NewFee(gaswanted, gasfee),
 			Signatures: nil,
 			Memo:       cfg.RootCfg.Memo,
@@ -156,10 +152,8 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 		return nil
 	}
 
-	msgs = append(msgs, msg)
-
 	tx := &std.Tx{
-		Msgs:       msgs,
+		Msgs:       []std.Msg{msg},
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,

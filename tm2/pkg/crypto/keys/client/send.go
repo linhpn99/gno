@@ -107,18 +107,20 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 
 	var msgs []std.Msg
 
+	msg := bank.MsgSend{
+		FromAddress: fromAddr,
+		ToAddress:   toAddr,
+		Amount:      send,
+	}
+
 	// if a sponsor onchain address is specified
 	if cfg.RootCfg.Sponsor != "" {
-		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsor)
+		sponsorAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsor)
 		if err != nil {
-			return errors.Wrap(err, "invalid sponsoree address")
+			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		msgs = append(msgs, vm.NewMsgNoop(fromAddr), bank.MsgSend{
-			FromAddress: sponsoreeAddress,
-			ToAddress:   toAddr,
-			Amount:      send,
-		})
+		msgs = append(msgs, vm.NewMsgNoop(sponsorAddress), msg)
 
 		tx := &std.Tx{
 			Msgs:       msgs,
@@ -133,12 +135,7 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 		}
 
 		if cfg.RootCfg.Broadcast {
-			err = ExecBroadcast(cfg.RootCfg, tx, io)
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return ExecBroadcast(cfg.RootCfg, tx, io)
 		}
 
 		io.Println(string(amino.MustMarshalJSON(tx)))
@@ -146,11 +143,7 @@ func execMakeSend(cfg *MakeSendCfg, args []string, io commands.IO) error {
 		return nil
 	}
 
-	msgs = append(msgs, bank.MsgSend{
-		FromAddress: fromAddr,
-		ToAddress:   toAddr,
-		Amount:      send,
-	})
+	msgs = append(msgs, msg)
 
 	tx := &std.Tx{
 		Msgs:       msgs,

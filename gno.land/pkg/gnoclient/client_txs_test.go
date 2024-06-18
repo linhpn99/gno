@@ -16,9 +16,7 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
-var (
-	adr, _ = crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
-)
+var adr, _ = crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 
 func TestRender(t *testing.T) {
 	t.Parallel()
@@ -879,7 +877,6 @@ func TestSendErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-
 								return adr
 							},
 						}
@@ -909,7 +906,6 @@ func TestSendErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-
 								return adr
 							},
 						}
@@ -1419,7 +1415,6 @@ func TestRunErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-
 								return adr
 							},
 						}
@@ -1743,7 +1738,6 @@ func TestAddPackageErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-
 								return adr
 							},
 						}
@@ -1886,7 +1880,6 @@ func TestSponsorTransactionErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-
 								return adr
 							},
 						}

@@ -129,7 +129,7 @@ func TestCallSingle_Sponsor_Integration(t *testing.T) {
 	// Query sponsoree's balance after transaction
 	sponsoreeAfter, _, err := client.QueryAccount(sponsoree.Info().GetAddress())
 	require.NoError(t, err)
-	assert.Equal(t, std.Coins(std.Coins(nil)), sponsoreeAfter.GetCoins())
+	assert.Equal(t, std.Coins(nil), sponsoreeAfter.GetCoins())
 
 	// Query sponsor's balance after transaction
 	sponsorAfter, _, err := client.QueryAccount(sponsor.Info().GetAddress())

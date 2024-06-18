@@ -109,17 +109,16 @@ func (s SignerFromKeybase) Sign(cfg SignCfg) (*std.Tx, error) {
 		return nil, err
 	}
 
-	signature := std.Signature{
-		PubKey:    pub,
-		Signature: sig,
-	}
-
 	addr := pub.Address()
+
 	found := false
 	for i := range tx.Signatures {
 		if signers[i] == addr {
 			found = true
-			tx.Signatures[i] = signature
+			tx.Signatures[i] = std.Signature{
+				PubKey:    pub,
+				Signature: sig,
+			}
 		}
 	}
 

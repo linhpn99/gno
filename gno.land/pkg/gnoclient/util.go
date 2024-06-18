@@ -21,6 +21,8 @@ var (
 	ErrNoMessages        = errors.New("no messages provided")
 	ErrMixedMessageTypes = errors.New("mixed message types not allowed")
 	ErrNoSignatures      = errors.New("no signatures provided")
+
+	ErrInvalidSponsorAddress = errors.New("invalid sponsor address")
 )
 
 // Constants for different message types.
@@ -36,6 +38,25 @@ type Msg interface {
 	validateMsg() error           // Validates the message.
 	getCoins() (std.Coins, error) // Retrieves the coins involved in the message.
 	getType() string              // Returns the type of the message.
+}
+
+type SponsorTxCfg struct {
+	BaseTxCfg
+	SponsorAddress crypto.Address
+}
+
+// validateBaseTxConfig validates the base transaction configuration.
+func (cfg SponsorTxCfg) validateSponsorTxConfig() error {
+	if cfg.SponsorAddress.IsZero() {
+		return ErrInvalidSponsorAddress
+	}
+	if cfg.GasWanted <= 0 {
+		return ErrInvalidGasWanted
+	}
+	if cfg.GasFee == "" {
+		return ErrInvalidGasFee
+	}
+	return nil
 }
 
 // BaseTxCfg defines the base transaction configuration shared by all message types.

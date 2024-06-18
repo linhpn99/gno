@@ -226,15 +226,15 @@ func (c *Client) AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.Resul
 	return c.signAndBroadcastTxCommit(tx, cfg.AccountNumber, cfg.SequenceNumber)
 }
 
-// CreateTx creates an unsigned transaction for various types of messages
-func (c *Client) CreateTx(cfg BaseTxCfg, msgs ...Msg) (*std.Tx, error) {
+// CreateTx creates an signed transaction for various types of messages which used for sponsorship
+func (c *Client) NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, error) {
 	// Validate required client fields.
 	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
 	// Validate base transaction config
-	if err := cfg.validateBaseTxConfig(); err != nil {
+	if err := cfg.validateSponsorTxConfig(); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +247,12 @@ func (c *Client) CreateTx(cfg BaseTxCfg, msgs ...Msg) (*std.Tx, error) {
 	firstMsgType := msgs[0].getType()
 
 	// Parse Msg slice
-	vmMsgs := make([]std.Msg, 0, len(msgs))
+	vmMsgs := make([]std.Msg, 0, len(msgs)+1)
+
+	// First msg in list must be MsgNoop
+	vmMsgs = append(vmMsgs, vm.MsgNoop{
+		Caller: cfg.SponsorAddress,
+	})
 
 	for _, msg := range msgs {
 		// Check if all messages are of the same type
@@ -316,14 +321,14 @@ func (c *Client) CreateTx(cfg BaseTxCfg, msgs ...Msg) (*std.Tx, error) {
 	}
 
 	// Pack transaction
-	tx := &std.Tx{
+	tx := std.Tx{
 		Msgs:       vmMsgs,
 		Fee:        std.NewFee(cfg.GasWanted, gasFeeCoins),
 		Signatures: nil,
 		Memo:       cfg.Memo,
 	}
 
-	return tx, nil
+	return c.SignTx(tx, cfg.AccountNumber, cfg.SequenceNumber)
 }
 
 // SignTx signs a transaction using the client's signer
@@ -353,49 +358,26 @@ func (c *Client) SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.T
 	return signedTx, nil
 }
 
-// Sponsor allows broadcasting a pre-signed transaction (represented by `presignedTx`)
-// using the signer's account to pay transaction fees. The `sponsoree` account benefits
-// from these transactions without incurring any gas costs
-func (c *Client) SponsorTransaction(cfg BaseTxCfg, presignedTx std.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+// ExecuteSponsorTransaction allows broadcasting a pre-signed transaction (represented by `sponsorTx`)
+// using the signer's account to pay transaction fees. The `sponsoree` account who signed `the sponsorTx“ before benefits
+// from this transaction without incurring any gas costs
+func (c *Client) ExecuteSponsorTransaction(sponsorTx std.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Validate required client fields
 	if err := c.validateClient(); err != nil {
 		return nil, err
 	}
 
-	// Validate base transaction config
-	if err := cfg.validateBaseTxConfig(); err != nil {
+	// Validate basic transaction
+	if err := sponsorTx.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
 	// Ensure at least one message is provided
-	if len(presignedTx.Msgs) == 0 {
+	if len(sponsorTx.Msgs) == 0 {
 		return nil, ErrNoMessages
 	}
 
-	// Ensure at least one signatures is provided
-	if len(presignedTx.Signatures) == 0 {
-		return nil, ErrNoSignatures
-	}
-
-	// Add MsgNoop as the first message and append the rest
-	msgs := append([]std.Msg{
-		vm.MsgNoop{
-			Caller: c.Signer.Info().GetAddress(),
-		},
-	}, presignedTx.Msgs...)
-
-	// Add an empty signature for MsgNoop
-	signatures := append([]std.Signature{
-		{
-			PubKey:    nil,
-			Signature: nil,
-		},
-	}, presignedTx.Signatures...)
-
-	presignedTx.Msgs = msgs
-	presignedTx.Signatures = signatures
-
-	return c.signAndBroadcastTxCommit(presignedTx, cfg.AccountNumber, cfg.SequenceNumber)
+	return c.signAndBroadcastTxCommit(sponsorTx, 0, 0)
 }
 
 // signAndBroadcastTxCommit signs a transaction and broadcasts it, returning the result

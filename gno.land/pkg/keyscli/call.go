@@ -131,7 +131,7 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		tx := &std.Tx{
+		tx := std.Tx{
 			Msgs:       []std.Msg{vm.NewMsgNoop(sponsorAddress), msg},
 			Fee:        std.NewFee(gaswanted, gasfee),
 			Signatures: nil,
@@ -147,7 +147,7 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 		return nil
 	}
 
-	tx := &std.Tx{
+	tx := std.Tx{
 		Msgs:       []std.Msg{msg},
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,

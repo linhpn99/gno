@@ -41,25 +41,6 @@ type Msg interface {
 	getType() string              // Returns the type of the message.
 }
 
-type SponsorTxCfg struct {
-	BaseTxCfg
-	SponsorAddress crypto.Address
-}
-
-// validateBaseTxConfig validates the base transaction configuration.
-func (cfg SponsorTxCfg) validateSponsorTxConfig() error {
-	if cfg.SponsorAddress.IsZero() {
-		return ErrInvalidSponsorAddress
-	}
-	if cfg.GasWanted <= 0 {
-		return ErrInvalidGasWanted
-	}
-	if cfg.GasFee == "" {
-		return ErrInvalidGasFee
-	}
-	return nil
-}
-
 // BaseTxCfg defines the base transaction configuration shared by all message types.
 type BaseTxCfg struct {
 	GasFee         string // Gas fee
@@ -71,6 +52,25 @@ type BaseTxCfg struct {
 
 // validateBaseTxConfig validates the base transaction configuration.
 func (cfg BaseTxCfg) validateBaseTxConfig() error {
+	if cfg.GasWanted <= 0 {
+		return ErrInvalidGasWanted
+	}
+	if cfg.GasFee == "" {
+		return ErrInvalidGasFee
+	}
+	return nil
+}
+
+type SponsorTxCfg struct {
+	BaseTxCfg
+	SponsorAddress crypto.Address
+}
+
+// validateBaseTxConfig validates the base transaction configuration.
+func (cfg SponsorTxCfg) validateSponsorTxConfig() error {
+	if cfg.SponsorAddress.IsZero() {
+		return ErrInvalidSponsorAddress
+	}
 	if cfg.GasWanted <= 0 {
 		return ErrInvalidGasWanted
 	}

@@ -43,7 +43,7 @@ func (s SignerFromKeybase) Validate() error {
 		Caller: s.Info().GetAddress(),
 	}
 	signCfg := SignCfg{
-		Tx: std.Tx{
+		UnsignedTX: std.Tx{
 			Msgs: []std.Msg{msg},
 			Fee:  std.NewFee(0, std.NewCoin("ugnot", 1000000)),
 		},
@@ -67,14 +67,14 @@ func (s SignerFromKeybase) Info() keys.Info {
 // SignCfg provides the signing configuration, containing:
 // unsigned transaction data, account number, and account sequence.
 type SignCfg struct {
-	Tx             std.Tx
+	UnsignedTX     std.Tx
 	SequenceNumber uint64
 	AccountNumber  uint64
 }
 
 // Sign implements the Signer interface for SignerFromKeybase.
 func (s SignerFromKeybase) Sign(cfg SignCfg) (*std.Tx, error) {
-	tx := cfg.Tx
+	tx := cfg.UnsignedTX
 	chainID := s.ChainID
 	accountNumber := cfg.AccountNumber
 	sequenceNumber := cfg.SequenceNumber
@@ -108,9 +108,7 @@ func (s SignerFromKeybase) Sign(cfg SignCfg) (*std.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	addr := pub.Address()
-
 	found := false
 	for i := range tx.Signatures {
 		if signers[i] == addr {

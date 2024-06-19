@@ -60,6 +60,15 @@ func (tx Tx) ValidateBasic() error {
 	return nil
 }
 
+func (tx Tx) IsSponsorship() bool {
+	for _, msg := range tx.Msgs {
+		if msg.Type() == "no_op" {
+			return true
+		}
+	}
+	return false
+}
+
 // CountSubKeys counts the total number of keys for a multi-sig public key.
 func CountSubKeys(pub crypto.PubKey) int {
 	v, ok := pub.(multisig.PubKeyMultisigThreshold)
@@ -87,10 +96,6 @@ func (tx Tx) GetSigners() []crypto.Address {
 	for _, msg := range tx.GetMsgs() {
 		// Iterate through all signers of the current message
 		for _, addr := range msg.GetSigners() {
-			// If the message type is "no_op", return its signers immediately
-			if msg.Type() == "no_op" {
-				return msg.GetSigners()
-			}
 			// Add the address to the signers list if it hasn't been seen before
 			if !seen[addr.String()] {
 				signers = append(signers, addr)

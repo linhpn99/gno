@@ -28,7 +28,10 @@ type IClient interface {
 	Run(cfg BaseTxCfg, msgs ...MsgRun) (*ctypes.ResultBroadcastTxCommit, error)
 	Send(cfg BaseTxCfg, msgs ...MsgSend) (*ctypes.ResultBroadcastTxCommit, error)
 	AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.ResultBroadcastTxCommit, error)
-	Sponsor(cfg BaseTxCfg, sponsoree crypto.Address, msgs ...Msg) (*ctypes.ResultBroadcastTxCommit, error)
+
+	NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, error)
+	SignTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error)
+	ExecuteSponsorTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error)
 }
 
 var _ IClient = (*Client)(nil)

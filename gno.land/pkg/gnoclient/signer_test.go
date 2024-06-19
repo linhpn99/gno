@@ -137,7 +137,7 @@ func TestSignerFromKeybase(t *testing.T) {
 			} else {
 				// Prepare a sign configuration
 				signCfg := SignCfg{
-					UnsignedTX: std.Tx{
+					Tx: std.Tx{
 						Msgs: []std.Msg{
 							vm.MsgCall{
 								Caller: signer.Info().GetAddress(),

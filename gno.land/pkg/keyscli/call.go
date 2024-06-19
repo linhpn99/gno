@@ -116,46 +116,49 @@ func execMakeCall(cfg *MakeCallCfg, args []string, io commands.IO) error {
 		return errors.Wrap(err, "parsing gas fee coin")
 	}
 
-	var msgs []std.Msg
+	msg := vm.MsgCall{
+		Caller:  caller,
+		Send:    send,
+		PkgPath: cfg.PkgPath,
+		Func:    fnc,
+		Args:    cfg.Args,
+	}
 
-	// if a sponsoree address is specified
-	if cfg.RootCfg.Sponsoree != "" {
-		sponsoreeAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsoree)
+	// if a sponsor onchain address is specified
+	if cfg.RootCfg.Sponsor != "" {
+		sponsorAddress, err := crypto.AddressFromBech32(cfg.RootCfg.Sponsor)
 		if err != nil {
-			return errors.Wrap(err, "invalid sponsoree address")
+			return errors.Wrap(err, "invalid sponsor address")
 		}
 
-		msgs = append(msgs, vm.NewMsgNoop(caller), vm.MsgCall{
-			Caller:  sponsoreeAddress,
-			Send:    send,
-			PkgPath: cfg.PkgPath,
-			Func:    fnc,
-			Args:    cfg.Args,
-		})
-	} else {
-		msgs = append(msgs, vm.MsgCall{
-			Caller:  caller,
-			Send:    send,
-			PkgPath: cfg.PkgPath,
-			Func:    fnc,
-			Args:    cfg.Args,
-		})
+		tx := std.Tx{
+			Msgs:       []std.Msg{vm.NewMsgNoop(sponsorAddress), msg},
+			Fee:        std.NewFee(gaswanted, gasfee),
+			Signatures: nil,
+			Memo:       cfg.RootCfg.Memo,
+		}
+
+		if cfg.RootCfg.Broadcast {
+			return client.ExecSignAndBroadcast(cfg.RootCfg, args, tx, io)
+		}
+
+		io.Println(string(amino.MustMarshalJSON(tx)))
+
+		return nil
 	}
 
 	tx := std.Tx{
-		Msgs:       msgs,
+		Msgs:       []std.Msg{msg},
 		Fee:        std.NewFee(gaswanted, gasfee),
 		Signatures: nil,
 		Memo:       cfg.RootCfg.Memo,
 	}
 
 	if cfg.RootCfg.Broadcast {
-		err := client.ExecSignAndBroadcast(cfg.RootCfg, args, tx, io)
-		if err != nil {
-			return err
-		}
-	} else {
-		io.Println(string(amino.MustMarshalJSON(tx)))
+		return client.ExecSignAndBroadcast(cfg.RootCfg, args, tx, io)
 	}
+
+	io.Println(string(amino.MustMarshalJSON(tx)))
+
 	return nil
 }

@@ -6,13 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gnolang/gno/gno.land/pkg/sdk/vm"
 	abci "github.com/gnolang/gno/tm2/pkg/bft/abci/types"
 	ctypes "github.com/gnolang/gno/tm2/pkg/bft/rpc/core/types"
 	"github.com/gnolang/gno/tm2/pkg/bft/types"
 	"github.com/gnolang/gno/tm2/pkg/crypto"
 	"github.com/gnolang/gno/tm2/pkg/crypto/keys"
+	"github.com/gnolang/gno/tm2/pkg/errors"
 	"github.com/gnolang/gno/tm2/pkg/std"
 )
+
+var adr, _ = crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 
 func TestRender(t *testing.T) {
 	t.Parallel()
@@ -27,7 +31,6 @@ func TestRender(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -66,7 +69,6 @@ func TestCallSingle(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -115,12 +117,17 @@ func TestCallSingle_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -140,12 +147,15 @@ func TestCallSingle_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
 	msg := MsgCall{
@@ -155,9 +165,10 @@ func TestCallSingle_Sponsor(t *testing.T) {
 		Send:     "100ugnot",
 	}
 
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	presignedTx, err := client.NewSponsorTransaction(cfg, msg)
+	assert.NoError(t, err)
 
-	res, err := client.Sponsor(cfg, sponsoree, msg)
+	res, err := client.ExecuteSponsorTransaction(*presignedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -174,7 +185,6 @@ func TestCallMultiple(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -239,12 +249,17 @@ func TestCallMultiple_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -264,12 +279,15 @@ func TestCallMultiple_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
 	msg1 := MsgCall{
@@ -293,9 +311,14 @@ func TestCallMultiple_Sponsor(t *testing.T) {
 		Send:     "",
 	}
 
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2, msg3)
+	assert.NoError(t, err)
 
-	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2, msg3)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	assert.NoError(t, err)
+
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
+
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -495,7 +518,6 @@ func TestSendSingle(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -544,12 +566,17 @@ func TestSendSingle_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -569,15 +596,17 @@ func TestSendSingle_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
-	sponsorRecipient, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
 	receiver, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
 
 	msg := MsgSend{
@@ -585,7 +614,14 @@ func TestSendSingle_Sponsor(t *testing.T) {
 		Send:      "100ugnot",
 	}
 
-	res, err := client.Sponsor(cfg, sponsorRecipient, msg)
+	tx, err := client.NewSponsorTransaction(cfg, msg)
+	assert.NoError(t, err)
+
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	assert.NoError(t, err)
+
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
+
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -602,7 +638,6 @@ func TestSendMultiple(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -654,12 +689,17 @@ func TestSendMultiple_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -679,12 +719,15 @@ func TestSendMultiple_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
 	receiver, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
@@ -699,9 +742,13 @@ func TestSendMultiple_Sponsor(t *testing.T) {
 		Send:      "200ugnot",
 	}
 
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2)
+	assert.NoError(t, err)
 
-	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	assert.NoError(t, err)
+
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, string(res.DeliverTx.Data), "it works!")
@@ -830,7 +877,6 @@ func TestSendErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 								return adr
 							},
 						}
@@ -860,7 +906,6 @@ func TestSendErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 								return adr
 							},
 						}
@@ -909,7 +954,6 @@ func TestRunSingle(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -972,12 +1016,17 @@ func TestRunSingle_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -997,12 +1046,15 @@ func TestRunSingle_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
 	fileBody := `package main
@@ -1027,9 +1079,13 @@ func main() {
 		Send: "",
 	}
 
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	tx, err := client.NewSponsorTransaction(cfg, msg)
+	assert.NoError(t, err)
 
-	res, err := client.Sponsor(cfg, sponsoree, msg)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	assert.NoError(t, err)
+
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\n", string(res.DeliverTx.Data))
@@ -1046,7 +1102,6 @@ func TestRunMultiple(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -1120,12 +1175,17 @@ func TestRunMultiple_Sponsor(t *testing.T) {
 	client := Client{
 		Signer: &mockSigner{
 			sign: func(cfg SignCfg) (*std.Tx, error) {
-				return &std.Tx{}, nil
+				cfg.Tx.Signatures = []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				}
+				return &cfg.Tx, nil
 			},
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -1145,12 +1205,15 @@ func TestRunMultiple_Sponsor(t *testing.T) {
 		},
 	}
 
-	cfg := BaseTxCfg{
-		GasWanted:      100000,
-		GasFee:         "10000ugnot",
-		AccountNumber:  1,
-		SequenceNumber: 1,
-		Memo:           "Test memo",
+	cfg := SponsorTxCfg{
+		BaseTxCfg: BaseTxCfg{
+			GasWanted:      100000,
+			GasFee:         "10000ugnot",
+			AccountNumber:  1,
+			SequenceNumber: 1,
+			Memo:           "Test memo",
+		},
+		SponsorAddress: adr,
 	}
 
 	fileBody := `package main
@@ -1187,9 +1250,13 @@ func main() {
 		Send: "",
 	}
 
-	sponsoree, _ := crypto.AddressFromBech32("g13sm84nuqed3fuank8huh7x9mupgw22uft3lcl8")
+	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2)
+	assert.NoError(t, err)
 
-	res, err := client.Sponsor(cfg, sponsoree, msg1, msg2)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	assert.NoError(t, err)
+
+	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "hi gnoclient!\nhi gnoclient!\n", string(res.DeliverTx.Data))
@@ -1348,7 +1415,6 @@ func TestRunErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 								return adr
 							},
 						}
@@ -1397,7 +1463,6 @@ func TestAddPackageSingle(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -1457,7 +1522,6 @@ func TestAddPackageMultiple(t *testing.T) {
 			info: func() keys.Info {
 				return &mockKeysInfo{
 					getAddress: func() crypto.Address {
-						adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 						return adr
 					},
 				}
@@ -1674,7 +1738,6 @@ func TestAddPackageErrors(t *testing.T) {
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 								return adr
 							},
 						}
@@ -1711,35 +1774,31 @@ func TestAddPackageErrors(t *testing.T) {
 	}
 }
 
-func TestSponsorErrors(t *testing.T) {
+func TestSponsorTransactionErrors(t *testing.T) {
 	t.Parallel()
 
-	toAddress, _ := crypto.AddressFromBech32("g14a0y9a64dugh3l7hneshdxr4w0rfkkww9ls35p")
 	testCases := []struct {
 		name          string
 		client        Client
-		cfg           BaseTxCfg
-		msgs          []Msg
+		cfg           SponsorTxCfg
+		presignedTx   std.Tx
 		expectedError error
 	}{
 		{
 			name: "Invalid Client",
 			client: Client{
-				Signer:    nil,
+				Signer:    nil, // empty signer
 				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      100000,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				MsgSend{
-					ToAddress: toAddress,
-					Send:      "1ugnot",
+			cfg: SponsorTxCfg{
+				BaseTxCfg: BaseTxCfg{
+					GasWanted:      100000,
+					GasFee:         "10000ugnot",
+					AccountNumber:  1,
+					SequenceNumber: 1,
+					Memo:           "Test memo",
 				},
+				SponsorAddress: adr,
 			},
 			expectedError: ErrMissingSigner,
 		},
@@ -1749,18 +1808,15 @@ func TestSponsorErrors(t *testing.T) {
 				Signer:    &mockSigner{},
 				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      -1,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				MsgSend{
-					ToAddress: toAddress,
-					Send:      "1ugnot",
+			cfg: SponsorTxCfg{
+				BaseTxCfg: BaseTxCfg{
+					GasWanted:      100000,
+					GasFee:         "10000ugnot",
+					AccountNumber:  1,
+					SequenceNumber: 1,
+					Memo:           "Test memo",
 				},
+				SponsorAddress: adr,
 			},
 			expectedError: ErrInvalidGasWanted,
 		},
@@ -1770,162 +1826,104 @@ func TestSponsorErrors(t *testing.T) {
 				Signer:    &mockSigner{},
 				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      100000,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
+			cfg: SponsorTxCfg{
+				BaseTxCfg: BaseTxCfg{
+					GasWanted:      100000,
+					GasFee:         "10000ugnot",
+					AccountNumber:  1,
+					SequenceNumber: 1,
+					Memo:           "Test memo",
+				},
+				SponsorAddress: adr,
 			},
-			msgs:          nil,
+			presignedTx: std.Tx{
+				Msgs: []std.Msg{}, // no messages provided
+				Fee:  std.NewFee(1, std.NewCoin("ugnot", 1)),
+				Signatures: []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
+					},
+				},
+			},
 			expectedError: ErrNoMessages,
 		},
 		{
-			name: "Mixed messages",
+			name: "Empty signatures list",
 			client: Client{
-				Signer: &mockSigner{
-					info: func() keys.Info {
-						return &mockKeysInfo{
-							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
-								return adr
-							},
-						}
-					},
-				},
+				Signer:    &mockSigner{},
 				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      1,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				MsgCall{
-					PkgPath:  "gno.land/r/demo/tamagotchi",
-					FuncName: "Feed",
-					Args:     []string{""},
-					Send:     "",
+			cfg: SponsorTxCfg{
+				BaseTxCfg: BaseTxCfg{
+					GasWanted:      100000,
+					GasFee:         "10000ugnot",
+					AccountNumber:  1,
+					SequenceNumber: 1,
+					Memo:           "Test memo",
 				},
-				MsgSend{
-					ToAddress: toAddress,
-					Send:      "1ugnot",
-				},
+				SponsorAddress: adr,
 			},
-			expectedError: ErrMixedMessageTypes,
+			presignedTx: std.Tx{
+				Msgs: []std.Msg{
+					vm.MsgCall{},
+				},
+				Fee:        std.NewFee(1, std.NewCoin("ugnot", 1)),
+				Signatures: []std.Signature{}, // no signatures provided
+			},
+			expectedError: ErrNoSignatures,
 		},
 		{
-			name: "Invalid message",
+			name: "Error signAndBroadcastTxCommit",
 			client: Client{
 				Signer: &mockSigner{
 					info: func() keys.Info {
 						return &mockKeysInfo{
 							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 								return adr
 							},
 						}
 					},
-				},
-				RPCClient: &mockRPCClient{},
-			},
-			cfg: BaseTxCfg{
-				GasWanted:      1,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				MsgCall{
-					PkgPath:  "",
-					FuncName: "Feed",
-					Args:     []string{""},
-					Send:     "",
-				},
-			},
-			expectedError: ErrEmptyPkgPath,
-		},
-		{
-			name: "Error parsing coin from message",
-			client: Client{
-				Signer: &mockSigner{
-					info: func() keys.Info {
-						return &mockKeysInfo{
-							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
-								return adr
-							},
-						}
+					sign: func(cfg SignCfg) (*std.Tx, error) {
+						return nil, errors.New("failed to sign tx") // failed to sign tx
 					},
 				},
 				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      100000,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				MsgAddPackage{
-					Package: &std.MemPackage{
-						Name: "",
-						Path: "",
-						Files: []*std.MemFile{
-							{
-								Name: "file1.gno",
-								Body: "",
-							},
-						},
-					},
-					Deposit: "xxx", // invalid denom
+			cfg: SponsorTxCfg{
+				BaseTxCfg: BaseTxCfg{
+					GasWanted:      100000,
+					GasFee:         "10000ugnot",
+					AccountNumber:  1,
+					SequenceNumber: 1,
+					Memo:           "Test memo",
 				},
+				SponsorAddress: adr,
 			},
-			expectedError: ErrInvalidAmount,
-		},
-		{
-			name: "Invalid message type",
-			client: Client{
-				Signer: &mockSigner{
-					info: func() keys.Info {
-						return &mockKeysInfo{
-							getAddress: func() crypto.Address {
-								adr, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
-								return adr
-							},
-						}
+			presignedTx: std.Tx{
+				Msgs: []std.Msg{
+					vm.MsgCall{},
+				},
+				Fee: std.NewFee(1, std.NewCoin("ugnot", 1)),
+				Signatures: []std.Signature{
+					{
+						PubKey:    nil,
+						Signature: nil,
 					},
 				},
-				RPCClient: &mockRPCClient{},
 			},
-			cfg: BaseTxCfg{
-				GasWanted:      100000,
-				GasFee:         "10000ugnot",
-				AccountNumber:  1,
-				SequenceNumber: 1,
-				Memo:           "Test memo",
-			},
-			msgs: []Msg{
-				mockMsg{},
-			},
-			expectedError: ErrInvalidMsgType,
+			expectedError: errors.New("failed to sign tx"),
 		},
 	}
-
-	sponsorAddress, _ := crypto.AddressFromBech32("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5")
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			res, err := tc.client.Sponsor(tc.cfg, sponsorAddress, tc.msgs...)
+			res, err := tc.client.ExecuteSponsorTransaction(tc.presignedTx, tc.cfg.AccountNumber, tc.cfg.SequenceNumber)
 			assert.Nil(t, res)
-			assert.ErrorIs(t, err, tc.expectedError)
+			assert.Contains(t, err.Error(), tc.expectedError.Error())
 		})
 	}
 }

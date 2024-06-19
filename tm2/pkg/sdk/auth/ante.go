@@ -138,8 +138,8 @@ func NewAnteHandler(ak AccountKeeper, bank BankKeeperI, sigGasConsumer Signature
 		// When simulating, this would just be a 0-length slice.
 		stdSigs := tx.GetSignatures()
 
-		var isNewAccount bool
 		for i := 0; i < len(stdSigs); i++ {
+			var isNewAccount bool
 			// skip the fee payer, account is cached and fees were deducted already
 			if i != 0 {
 				signerAccs[i], res = GetSignerAcc(newCtx, ak, signerAddrs[i])
@@ -147,10 +147,7 @@ func NewAnteHandler(ak AccountKeeper, bank BankKeeperI, sigGasConsumer Signature
 				if !res.IsOK() && tx.IsSponsorTx() {
 					isNewAccount = true
 					signerAccs[i] = ak.NewAccountWithAddress(newCtx, signerAddrs[i])
-					err := signerAccs[i].SetPubKey(stdSigs[i].PubKey)
-					if err != nil {
-						return newCtx, res, true
-					}
+					signerAccs[i].SetPubKey(stdSigs[i].PubKey)
 				}
 			}
 
@@ -159,11 +156,9 @@ func NewAnteHandler(ak AccountKeeper, bank BankKeeperI, sigGasConsumer Signature
 			if isGenesis && !opts.VerifyGenesisSignatures {
 				// No signatures are needed for genesis.
 			} else {
-				// Set to 0 before the new account number is generated
 				if isNewAccount {
 					sacc.SetAccountNumber(0)
 				}
-
 				// Check signature
 				signBytes, err := GetSignBytes(newCtx.ChainID(), tx, sacc, isGenesis)
 				if err != nil {

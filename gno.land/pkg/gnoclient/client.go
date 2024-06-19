@@ -30,8 +30,8 @@ type IClient interface {
 	AddPackage(cfg BaseTxCfg, msgs ...MsgAddPackage) (*ctypes.ResultBroadcastTxCommit, error)
 
 	NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, error)
-	SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error)
-	ExecuteSponsorTransaction(presignedTx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error)
+	SignTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error)
+	ExecuteSponsorTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error)
 }
 
 var _ IClient = (*Client)(nil)

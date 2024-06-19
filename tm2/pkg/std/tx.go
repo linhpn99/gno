@@ -60,7 +60,7 @@ func (tx Tx) ValidateBasic() error {
 	return nil
 }
 
-func (tx Tx) IsSponsorship() bool {
+func (tx Tx) IsSponsorTx() bool {
 	for _, msg := range tx.Msgs {
 		if msg.Type() == "no_op" {
 			return true

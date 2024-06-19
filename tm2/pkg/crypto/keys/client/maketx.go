@@ -149,7 +149,7 @@ func SignHandler(
 
 	qres, err := QueryHandler(qopts)
 	if err != nil {
-		if !tx.IsSponsorship() {
+		if !tx.IsSponsorTx() {
 			return errors.Wrap(err, "query account")
 		}
 	} else {

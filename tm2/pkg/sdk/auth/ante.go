@@ -143,7 +143,8 @@ func NewAnteHandler(ak AccountKeeper, bank BankKeeperI, sigGasConsumer Signature
 			// skip the fee payer, account is cached and fees were deducted already
 			if i != 0 {
 				signerAccs[i], res = GetSignerAcc(newCtx, ak, signerAddrs[i])
-				if !res.IsOK() {
+				// only create new account when tx is a sponsor transaction
+				if !res.IsOK() && tx.IsSponsorTx() {
 					isNewAccount = true
 					signerAccs[i] = ak.NewAccountWithAddress(newCtx, signerAddrs[i])
 					err := signerAccs[i].SetPubKey(stdSigs[i].PubKey)

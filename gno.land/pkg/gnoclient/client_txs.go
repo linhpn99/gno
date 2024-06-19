@@ -332,7 +332,7 @@ func (c *Client) NewSponsorTransaction(cfg SponsorTxCfg, msgs ...Msg) (*std.Tx, 
 }
 
 // SignTx signs a transaction using the client's signer
-func (c *Client) SignTx(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error) {
+func (c *Client) SignTransaction(tx std.Tx, accountNumber, sequenceNumber uint64) (*std.Tx, error) {
 	if sequenceNumber == 0 || accountNumber == 0 {
 		caller := c.Signer.Info().GetAddress()
 		account, _, err := c.QueryAccount(caller)
@@ -378,7 +378,7 @@ func (c *Client) ExecuteSponsorTransaction(tx std.Tx, accountNumber, sequenceNum
 	}
 
 	// Ensure tx is a sponsor transaction
-	if !tx.IsSponsorship() {
+	if !tx.IsSponsorTx() {
 		return nil, ErrInvalidSponsorTx
 	}
 
@@ -387,7 +387,7 @@ func (c *Client) ExecuteSponsorTransaction(tx std.Tx, accountNumber, sequenceNum
 
 // signAndBroadcastTxCommit signs a transaction and broadcasts it, returning the result
 func (c *Client) signAndBroadcastTxCommit(tx std.Tx, accountNumber, sequenceNumber uint64) (*ctypes.ResultBroadcastTxCommit, error) {
-	signedTx, err := c.SignTx(tx, accountNumber, sequenceNumber)
+	signedTx, err := c.SignTransaction(tx, accountNumber, sequenceNumber)
 	if err != nil {
 		return nil, errors.Wrap(err, "sign")
 	}

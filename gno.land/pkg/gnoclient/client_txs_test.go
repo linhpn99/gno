@@ -314,7 +314,7 @@ func TestCallMultiple_Sponsor(t *testing.T) {
 	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2, msg3)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
 	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
@@ -617,7 +617,7 @@ func TestSendSingle_Sponsor(t *testing.T) {
 	tx, err := client.NewSponsorTransaction(cfg, msg)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
 	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
@@ -745,7 +745,7 @@ func TestSendMultiple_Sponsor(t *testing.T) {
 	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
 	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
@@ -1082,7 +1082,7 @@ func main() {
 	tx, err := client.NewSponsorTransaction(cfg, msg)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
 	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)
@@ -1253,7 +1253,7 @@ func main() {
 	tx, err := client.NewSponsorTransaction(cfg, msg1, msg2)
 	assert.NoError(t, err)
 
-	signedTx, err := client.SignTx(*tx, cfg.AccountNumber, cfg.SequenceNumber)
+	signedTx, err := client.SignTransaction(*tx, cfg.AccountNumber, cfg.SequenceNumber)
 	assert.NoError(t, err)
 
 	res, err := client.ExecuteSponsorTransaction(*signedTx, cfg.AccountNumber, cfg.SequenceNumber)

@@ -207,6 +207,17 @@ func signTx(
 	signOpts signOpts,
 	keyOpts keyOpts,
 ) error {
+	// Initialize tx signatures.
+	signers := tx.GetSigners()
+	if tx.Signatures == nil {
+		for range signers {
+			tx.Signatures = append(tx.Signatures, std.Signature{
+				PubKey:    nil, // Zero signature
+				Signature: nil, // Zero signature
+			})
+		}
+	}
+
 	signBytes, err := tx.GetSignBytes(
 		signOpts.chainID,
 		signOpts.accountNumber,
@@ -226,38 +237,26 @@ func signTx(
 		return fmt.Errorf("unable to sign transaction bytes, %w", err)
 	}
 
-	// Save the signature
-	if tx.Signatures == nil {
-		tx.Signatures = make([]std.Signature, 0, 1)
-	}
-
-	// Check if the signature needs to be overwritten
-	for index, signature := range tx.Signatures {
-		if !signature.PubKey.Equals(pub) {
-			continue
-		}
-
-		// Save the signature
-		tx.Signatures[index] = std.Signature{
-			PubKey:    pub,
-			Signature: sig,
-		}
-
-		return nil
-	}
-
-	// Append the signature, since it wasn't
-	// present before
-	tx.Signatures = append(
-		tx.Signatures, std.Signature{
-			PubKey:    pub,
-			Signature: sig,
-		},
-	)
-
 	// Validate the tx after signing
 	if err := tx.ValidateBasic(); err != nil {
 		return fmt.Errorf("unable to validate transaction, %w", err)
+	}
+
+	addr := pub.Address()
+
+	found := false
+	for i := range tx.Signatures {
+		if signers[i] == addr {
+			found = true
+			tx.Signatures[i] = std.Signature{
+				PubKey:    pub,
+				Signature: sig,
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("address %v (%s) not in signer set", addr, keyOpts.keyName)
 	}
 
 	return nil

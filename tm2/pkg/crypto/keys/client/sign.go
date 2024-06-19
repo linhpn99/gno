@@ -157,22 +157,18 @@ func execSign(cfg *SignCfg, args []string, io commands.IO) error {
 		}
 	}
 
-	accountAddr := info.GetAddress()
-
-	qopts := &QueryCfg{
-		RootCfg: cfg.RootCfg,
-		Path:    fmt.Sprintf("auth/accounts/%s", accountAddr),
-	}
-
+	// Check if accountNumber or sequence is zero to determine if account information needs to be fetched
 	if cfg.AccountNumber == 0 || cfg.Sequence == 0 {
+		accountAddr := info.GetAddress()
+
+		qopts := &QueryCfg{
+			RootCfg: cfg.RootCfg,
+			Path:    fmt.Sprintf("auth/accounts/%s", accountAddr),
+		}
 		qres, err := QueryHandler(qopts)
 		if err == nil {
-			var qret struct {
-				BaseAccount std.BaseAccount
-			}
-
-			err = amino.UnmarshalJSON(qres.Response.Data, &qret)
-			if err == nil {
+			var qret struct{ BaseAccount std.BaseAccount }
+			if err := amino.UnmarshalJSON(qres.Response.Data, &qret); err == nil {
 				cfg.AccountNumber = qret.BaseAccount.AccountNumber
 				cfg.Sequence = qret.BaseAccount.Sequence
 			}
@@ -207,7 +203,7 @@ func signTx(
 	signOpts signOpts,
 	keyOpts keyOpts,
 ) error {
-	// Initialize tx signatures.
+	// Save the signature
 	signers := tx.GetSigners()
 	if tx.Signatures == nil {
 		for range signers {
@@ -216,6 +212,11 @@ func signTx(
 				Signature: nil, // Zero signature
 			})
 		}
+	}
+
+	// Validate the tx after signing
+	if err := tx.ValidateBasic(); err != nil {
+		return fmt.Errorf("unable to validate transaction, %w", err)
 	}
 
 	signBytes, err := tx.GetSignBytes(
@@ -235,11 +236,6 @@ func signTx(
 	)
 	if err != nil {
 		return fmt.Errorf("unable to sign transaction bytes, %w", err)
-	}
-
-	// Validate the tx after signing
-	if err := tx.ValidateBasic(); err != nil {
-		return fmt.Errorf("unable to validate transaction, %w", err)
 	}
 
 	addr := pub.Address()

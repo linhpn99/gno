@@ -26,18 +26,47 @@ func isValidName(name string) bool {
 	return reName.MatchString(name)
 }
 
-func Register(name string) error {
+func Register(name string, address std.Address) {
 	if !isValidName(name) {
-		return errors.New("invalid domain name")
+		panic("invalid domain name")
+	}
+
+	if domains.Has(name) {
+		panic("domain name has been registered before")
 	}
 
 	caller := std.PrevRealm().Addr()
 	domain := gns.NewDomain(name, caller, defaultExpireTime)
 
 	domains.Set(name, domain)
-	resolver.SetAddress(name, domain.Owner())
+	resolver.SetAddress(name, address)
+}
 
-	return nil
+func Resolve(name string) std.Address {
+	domain, err := getDomain(name)
+	if err != nil {
+		panic(err)
+	}
+
+	if !domain.IsAvailable() {
+		panic("domain is unavailable")
+	}
+
+	addr, err := resolver.Resolve(name)
+	if err != nil {
+		panic(err)
+	}
+
+	return addr
+}
+
+func ExtendExpiration(name string, duration time.Duration) {
+	domain, err := getDomain(name)
+	if err != nil {
+		panic(err)
+	}
+
+	domain.ExtendExpiration(duration)
 }
 
 func getDomain(name string) (gns.IDomain, error) {
@@ -45,25 +74,6 @@ func getDomain(name string) (gns.IDomain, error) {
 	if !exists {
 		return nil, errors.New("domain does not exist")
 	}
+
 	return value.(gns.IDomain), nil
-}
-
-func Resolve(name string) (std.Address, error) {
-	domain, err := getDomain(name)
-	if err != nil {
-		return "", err
-	}
-	if !domain.IsAvailable() {
-		return "", errors.New("domain is unavailable")
-	}
-	return resolver.Resolve(name)
-}
-
-func ExtendExpiration(name string, duration time.Duration) error {
-	domain, err := getDomain(name)
-	if err != nil {
-		return err
-	}
-	domain.ExtendExpiration(duration)
-	return nil
 }

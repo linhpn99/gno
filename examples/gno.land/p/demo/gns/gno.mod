@@ -1,4 +1,4 @@
-module gns
+module gno.land/r/demo/gns
 
 require (
 	gno.land/p/demo/ownable v0.0.0-latest

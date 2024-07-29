@@ -3,8 +3,6 @@ package gns
 import (
 	"std"
 	"time"
-
-	"gno.land/p/demo/ownable"
 )
 
 // IDomain defines the interface for interacting with a domain

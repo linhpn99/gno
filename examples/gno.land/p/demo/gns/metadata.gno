@@ -20,16 +20,18 @@ type Metadata struct {
 	Attributes       []Trait       // Additional attributes of the domain
 	Description      string        // A description of the domain
 	ContactInfo      string        // Contact information for the domain owner
+	RenewalFee       string        // The fee required to renew the domain, represented as a string
 }
 
 // NewMetadata creates a new Metadata instance
-func NewMetadata(avatar, description, contactInfo string,
+func NewMetadata(avatar, description, contactInfo, renewalFee string,
 	registrationTime time.Time, expiration time.Duration, attributes []Trait,
 ) Metadata {
 	return Metadata{
 		Avatar:           avatar,
 		RegistrationTime: registrationTime,
 		Expiration:       expiration,
+		RenewalFee:       renewalFee,
 		Attributes:       attributes,
 		Description:      description,
 		ContactInfo:      contactInfo,

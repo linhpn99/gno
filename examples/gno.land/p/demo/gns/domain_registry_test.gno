@@ -77,7 +77,7 @@ func TestSetMetadata_NotOwner(t *testing.T) {
 	std.TestSetRealm(std.NewUserRealm(nonOwner))
 	std.TestSetOrigCaller(nonOwner)
 
-	err = registry.SetMetadata(domainName, metadata)
+	err = registry.SetDomainData(domainName, metadata)
 	urequire.Error(t, err)
 	urequire.Equal(t, err.Error(), ErrCallerIsNotOwner.Error())
 }
@@ -87,7 +87,7 @@ func TestGetMetadata_InvalidDomain(t *testing.T) {
 
 	// Try to get metadata for a domain that doesn't exist
 	domainName := "nonexistent.gno"
-	_, err := registry.GetDomainFields(domainName, []MetadataType{})
+	_, err := registry.GetDomainFields(domainName, []MetadataField{})
 	urequire.Error(t, err)
 	urequire.Equal(t, err.Error(), ErrInvalidDomainName.Error())
 }

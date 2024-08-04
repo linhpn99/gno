@@ -93,3 +93,8 @@ func (s *metadataNFT) mint(to std.Address, tid TokenID) error {
 
 	return nil
 }
+
+type domainRegistry struct {
+	*basicNFT           // Embedded basicNFT struct for basic NFT functionality
+	metadata  *avl.Tree // AVL tree for storing metadata extensions
+}

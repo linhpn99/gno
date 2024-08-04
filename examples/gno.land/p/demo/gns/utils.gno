@@ -1,9 +1,9 @@
 package gns
 
-type MetadataType int
+type MetadataField int
 
 const (
-	FieldAvatar MetadataType = iota
+	FieldAvatar MetadataField = iota
 	FieldRegistrationTime
 	FieldExpiration
 	FieldAttributes

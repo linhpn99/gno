@@ -25,9 +25,7 @@ func TestSetAndGetMetadata(t *testing.T) {
 	std.TestSetOrigCaller(owner)
 
 	metadata := Metadata{
-		Owner:            owner,
 		Avatar:           "avatar_url",
-		Name:             "test_domain",
 		RegistrationTime: time.Now(),
 		Expiration:       365 * 24 * time.Hour,
 		Attributes: []Trait{
@@ -43,11 +41,11 @@ func TestSetAndGetMetadata(t *testing.T) {
 	urequire.NoError(t, err)
 
 	// Set metadata for the domain
-	err = registry.SetMetadata(domainName, metadata)
+	err = registry.SetDomainData(domainName, metadata)
 	urequire.NoError(t, err)
 
 	// Retrieve the metadata
-	retrievedMetadata, err := registry.GetMetadata(domainName, FieldAvatar)
+	retrievedMetadata, err := registry.GetDomainData(domainName, FieldAvatar)
 	urequire.NoError(t, err)
 	urequire.Equal(t, metadata.Avatar, retrievedMetadata.Avatar)
 }
@@ -60,9 +58,7 @@ func TestSetMetadata_NotOwner(t *testing.T) {
 	nonOwner := addr2
 
 	metadata := Metadata{
-		Owner:            owner,
 		Avatar:           "avatar_url",
-		Name:             "test_domain",
 		RegistrationTime: time.Now(),
 		Expiration:       365 * 24 * time.Hour,
 		Attributes: []Trait{
@@ -91,7 +87,7 @@ func TestGetMetadata_InvalidDomain(t *testing.T) {
 
 	// Try to get metadata for a domain that doesn't exist
 	domainName := "nonexistent.gno"
-	_, err := registry.GetSelectedMetadata(domainName, []MetadataType{})
+	_, err := registry.GetDomainFields(domainName, []MetadataType{})
 	urequire.Error(t, err)
 	urequire.Equal(t, err.Error(), ErrInvalidDomainName.Error())
 }

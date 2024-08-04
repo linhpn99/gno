@@ -19,9 +19,9 @@ type domainRegistry struct {
 type DomainRegistry interface {
 	grc721.IGRC721
 
-	SetMetadata(domainName string, metadata Metadata) error
-	GetSelectedMetadata(domainName string, types []MetadataType) (Metadata, error)
-	GetMetadata(domainName string, metadataType MetadataType) (Metadata, error)
+	SetDomainData(domainName string, metadata Metadata) error
+	GetDomainData(domainName string, field MetadataField) (Metadata, error)
+	GetDomainFields(domainName string, fields []MetadataField) (Metadata, error)
 }
 
 // NewDomainRegistry creates a new domain registry with metadata extensions
@@ -34,8 +34,8 @@ func NewDomainRegistry(name, symbol string) *domainRegistry {
 	}
 }
 
-// GetMetadata retrieves metadata for a given domain based on a specific field
-func (s *domainRegistry) SetMetadata(domainName string, metadata Metadata) error {
+// SetDomainData sets the metadata for a given domain name
+func (s *domainRegistry) SetDomainData(domainName string, metadata Metadata) error {
 	owner, err := s.domains.OwnerOf(grc721.TokenID(domainName))
 	if err != nil {
 		return err
@@ -50,8 +50,8 @@ func (s *domainRegistry) SetMetadata(domainName string, metadata Metadata) error
 	return nil
 }
 
-// GetSelectedMetadata retrieves multiple fields of metadata for a given domain
-func (s *domainRegistry) GetSelectedMetadata(domainName string, fields []MetadataType) (Metadata, error) {
+// GetDomainFields retrieves multiple fields of metadata for a given domain
+func (s *domainRegistry) GetDomainFields(domainName string, fields []MetadataField) (Metadata, error) {
 	data, found := s.metadata.Get(domainName)
 	if !found {
 		return Metadata{}, ErrInvalidDomainName
@@ -86,8 +86,8 @@ func (s *domainRegistry) GetSelectedMetadata(domainName string, fields []Metadat
 	return result, nil
 }
 
-// GetMetadata retrieves metadata for a given domain
-func (s *domainRegistry) GetMetadata(domainName string, field MetadataType) (Metadata, error) {
+// GetDomainData retrieves metadata for a given domain
+func (s *domainRegistry) GetDomainData(domainName string, field MetadataField) (Metadata, error) {
 	data, found := s.metadata.Get(domainName)
 	if !found {
 		return Metadata{}, ErrInvalidDomainName

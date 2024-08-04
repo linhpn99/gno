@@ -27,7 +27,7 @@ func TestSetAndGetMetadata(t *testing.T) {
 	metadata := Metadata{
 		Avatar:           "avatar_url",
 		RegistrationTime: time.Now(),
-		Expiration:       365 * 24 * time.Hour,
+		ExpirationTime:   time.Now().Add(365 * 24 * time.Hour),
 		Attributes: []Trait{
 			{DisplayType: "string", TraitType: "type", Value: "example"},
 		},
@@ -60,7 +60,7 @@ func TestSetMetadata_NotOwner(t *testing.T) {
 	metadata := Metadata{
 		Avatar:           "avatar_url",
 		RegistrationTime: time.Now(),
-		Expiration:       365 * 24 * time.Hour,
+		ExpirationTime:   time.Now().Add(365 * 24 * time.Hour),
 		Attributes: []Trait{
 			{DisplayType: "string", TraitType: "type", Value: "example"},
 		},
@@ -90,4 +90,45 @@ func TestGetMetadata_InvalidDomain(t *testing.T) {
 	_, err := registry.GetDomainFields(domainName, []MetadataField{})
 	urequire.Error(t, err)
 	urequire.Equal(t, err.Error(), ErrInvalidDomainName.Error())
+}
+
+func TestRenewDomain_Success(t *testing.T) {
+	registry := NewDomainRegistry("Test Registry", "TST")
+
+	// Create a mock owner address
+	owner := addr1
+
+	std.TestSetRealm(std.NewUserRealm(owner))
+	std.TestSetOrigCaller(owner)
+
+	metadata := Metadata{
+		Avatar:           "avatar_url",
+		RegistrationTime: time.Now(),
+		ExpirationTime:   time.Now().Add(365 * 24 * time.Hour),
+		Attributes: []Trait{
+			{DisplayType: "string", TraitType: "type", Value: "example"},
+		},
+		Description: "Test domain",
+		ContactInfo: "contact@example.com",
+	}
+
+	// Mint a new domain for the owner
+	domainName := "renewable.gno"
+	err := registry.domains.Mint(owner, grc721.TokenID(domainName))
+	urequire.NoError(t, err)
+
+	// Set metadata for the domain
+	err = registry.SetDomainData(domainName, metadata)
+	urequire.NoError(t, err)
+
+	// Renew the domain
+	additionalDuration := 30 * 24 * time.Hour
+	err = registry.RenewDomain(domainName, additionalDuration)
+	urequire.NoError(t, err)
+
+	// Check that the expiration was extended
+	renewedMetadata, err := registry.GetDomainData(domainName, FieldExpirationTime)
+	urequire.NoError(t, err)
+	expectedExpirationTime := metadata.ExpirationTime
+	urequire.Equal(t, expectedExpirationTime.Unix(), renewedMetadata.ExpirationTime.Unix())
 }

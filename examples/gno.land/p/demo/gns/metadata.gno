@@ -14,23 +14,23 @@ type Trait struct {
 
 // Metadata represents the metadata associated with a domain
 type Metadata struct {
-	Avatar           string        // URL or identifier for an avatar image
-	RegistrationTime time.Time     // The time the domain was registered
-	Expiration       time.Duration // The duration until the domain expires
-	Attributes       []Trait       // Additional attributes of the domain
-	Description      string        // A description of the domain
-	ContactInfo      string        // Contact information for the domain owner
-	RenewalFee       string        // The fee required to renew the domain, represented as a string
+	Avatar           string    // URL or identifier for an avatar image
+	RegistrationTime time.Time // The time when the domain was registered
+	ExpirationTime   time.Time // The time when the domain will be expire
+	Attributes       []Trait   // Additional attributes of the domain
+	Description      string    // A description of the domain
+	ContactInfo      string    // Contact information for the domain owner
+	RenewalFee       string    // The fee required to renew the domain, represented as a string
 }
 
 // NewMetadata creates a new Metadata instance
 func NewMetadata(avatar, description, contactInfo, renewalFee string,
-	registrationTime time.Time, expiration time.Duration, attributes []Trait,
+	registrationTime, expirationTime time.Time, attributes []Trait,
 ) Metadata {
 	return Metadata{
 		Avatar:           avatar,
 		RegistrationTime: registrationTime,
-		Expiration:       expiration,
+		ExpirationTime:   expirationTime,
 		RenewalFee:       renewalFee,
 		Attributes:       attributes,
 		Description:      description,

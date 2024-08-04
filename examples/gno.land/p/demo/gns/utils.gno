@@ -6,7 +6,7 @@ const (
 	FieldAvatar MetadataField = iota
 	FieldRegistrationTime
 	FieldRenewalFee
-	FieldExpiration
+	FieldExpirationTime
 	FieldAttributes
 	FieldDescription
 	FieldContactInfo

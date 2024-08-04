@@ -56,7 +56,7 @@ func (s *domainRegistry) RenewDomain(domainName string, additionalDuration time.
 
 	// Todo : apply deduction renewal fee here
 
-	metadata.Expiration += additionalDuration
+	metadata.ExpirationTime.Add(additionalDuration)
 	s.metadata.Set(domainName, metadata)
 
 	return nil
@@ -98,8 +98,8 @@ func (d *domainRegistry) GetDomainFields(domainName string, fields []MetadataFie
 			result.Avatar = metadata.Avatar
 		case FieldRegistrationTime:
 			result.RegistrationTime = metadata.RegistrationTime
-		case FieldExpiration:
-			result.Expiration = metadata.Expiration
+		case FieldExpirationTime:
+			result.ExpirationTime = metadata.ExpirationTime
 		case FieldRenewalFee:
 			result.RenewalFee = metadata.RenewalFee
 		case FieldAttributes:
@@ -134,9 +134,9 @@ func (d *domainRegistry) GetDomainData(domainName string, field MetadataField) (
 		return Metadata{
 			RegistrationTime: metadata.RegistrationTime,
 		}, nil
-	case FieldExpiration:
+	case FieldExpirationTime:
 		return Metadata{
-			Expiration: metadata.Expiration,
+			ExpirationTime: metadata.ExpirationTime,
 		}, nil
 	case FieldRenewalFee:
 		return Metadata{

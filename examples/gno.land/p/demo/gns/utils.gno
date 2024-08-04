@@ -1,3 +1,12 @@
 package gns
 
-type DomainName string
+type MetadataType int
+
+const (
+	FieldAvatar MetadataType = iota
+	FieldRegistrationTime
+	FieldExpiration
+	FieldAttributes
+	FieldDescription
+	FieldContactInfo
+)

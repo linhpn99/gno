@@ -38,7 +38,7 @@ func TestSetAndGetMetadata(t *testing.T) {
 	}
 
 	// Mint a new domain for the owner
-	domainName := DomainName("test.gno")
+	domainName := "test.gno"
 	err := registry.domains.Mint(owner, grc721.TokenID(domainName))
 	urequire.NoError(t, err)
 
@@ -47,9 +47,9 @@ func TestSetAndGetMetadata(t *testing.T) {
 	urequire.NoError(t, err)
 
 	// Retrieve the metadata
-	retrievedMetadata, err := registry.GetMetadata(domainName)
+	retrievedMetadata, err := registry.GetMetadata(domainName, FieldAvatar)
 	urequire.NoError(t, err)
-	urequire.Equal(t, metadata.Name, retrievedMetadata.Name)
+	urequire.Equal(t, metadata.Avatar, retrievedMetadata.Avatar)
 }
 
 func TestSetMetadata_NotOwner(t *testing.T) {
@@ -73,7 +73,7 @@ func TestSetMetadata_NotOwner(t *testing.T) {
 	}
 
 	// Mint a new domain for the owner
-	domainName := DomainName("test.gno")
+	domainName := "test.gno"
 	err := registry.domains.Mint(owner, grc721.TokenID(domainName))
 	urequire.NoError(t, err)
 
@@ -90,8 +90,8 @@ func TestGetMetadata_InvalidDomain(t *testing.T) {
 	registry := NewDomainRegistry("Test Registry", "TST")
 
 	// Try to get metadata for a domain that doesn't exist
-	domainName := DomainName("nonexistent.gno")
-	_, err := registry.GetMetadata(domainName)
+	domainName := "nonexistent.gno"
+	_, err := registry.GetSelectedMetadata(domainName, []MetadataType{})
 	urequire.Error(t, err)
 	urequire.Equal(t, err.Error(), ErrInvalidDomainName.Error())
 }

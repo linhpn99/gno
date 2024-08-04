@@ -79,7 +79,7 @@ func TestSetMetadata_NotOwner(t *testing.T) {
 
 	err = registry.SetDomainData(domainName, metadata)
 	urequire.Error(t, err)
-	urequire.Equal(t, err.Error(), ErrCallerIsNotOwner.Error())
+	urequire.Equal(t, err.Error(), ErrUnauthorized.Error())
 }
 
 func TestGetMetadata_InvalidDomain(t *testing.T) {

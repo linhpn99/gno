@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ErrCallerIsNotOwner    = errors.New("caller is not token owner")
-	ErrInvalidDomainName   = errors.New("invalid domain name")
-	ErrInvalidMetadataType = errors.New("invalid metadata type")
+	ErrUnauthorized         = errors.New("caller is not domain owner")
+	ErrInvalidDomainName    = errors.New("invalid domain name")
+	ErrInvalidMetadataField = errors.New("invalid metadata field")
 )

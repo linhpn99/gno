@@ -22,6 +22,7 @@ type DomainRegistry interface {
 	SetDomainData(domainName string, metadata Metadata) error
 	GetDomainData(domainName string, field MetadataField) (Metadata, error)
 	GetDomainFields(domainName string, fields []MetadataField) (Metadata, error)
+	RenewDomain(domainName string, additionalDuration time.Duration) error
 }
 
 // NewDomainRegistry creates a new domain registry with metadata extensions
@@ -34,8 +35,15 @@ func NewDomainRegistry(name, symbol string) *domainRegistry {
 	}
 }
 
-// SetDomainData sets the metadata for a given domain name
-func (s *domainRegistry) SetDomainData(domainName string, metadata Metadata) error {
+// RenewDomain extends the expiration time of a domain name
+func (s *domainRegistry) RenewDomain(domainName string, additionalDuration time.Duration) error {
+	data, found := s.metadata.Get(domainName)
+	if !found {
+		return ErrInvalidDomainName
+	}
+
+	metadata := data.(Metadata)
+
 	owner, err := s.domains.OwnerOf(grc721.TokenID(domainName))
 	if err != nil {
 		return err
@@ -43,16 +51,34 @@ func (s *domainRegistry) SetDomainData(domainName string, metadata Metadata) err
 
 	caller := std.PrevRealm().Addr()
 	if caller != owner {
-		return ErrCallerIsNotOwner
+		return ErrUnauthorized
 	}
 
+	metadata.Expiration += additionalDuration
 	s.metadata.Set(domainName, metadata)
+
+	return nil
+}
+
+// SetDomainData sets the metadata for a given domain name
+func (d *domainRegistry) SetDomainData(domainName string, metadata Metadata) error {
+	owner, err := d.domains.OwnerOf(grc721.TokenID(domainName))
+	if err != nil {
+		return err
+	}
+
+	caller := std.PrevRealm().Addr()
+	if caller != owner {
+		return ErrUnauthorized
+	}
+
+	d.metadata.Set(domainName, metadata)
 	return nil
 }
 
 // GetDomainFields retrieves multiple fields of metadata for a given domain
-func (s *domainRegistry) GetDomainFields(domainName string, fields []MetadataField) (Metadata, error) {
-	data, found := s.metadata.Get(domainName)
+func (d *domainRegistry) GetDomainFields(domainName string, fields []MetadataField) (Metadata, error) {
+	data, found := d.metadata.Get(domainName)
 	if !found {
 		return Metadata{}, ErrInvalidDomainName
 	}
@@ -79,7 +105,7 @@ func (s *domainRegistry) GetDomainFields(domainName string, fields []MetadataFie
 		case FieldContactInfo:
 			result.ContactInfo = metadata.ContactInfo
 		default:
-			return Metadata{}, ErrInvalidMetadataType
+			return Metadata{}, ErrInvalidMetadataField
 		}
 	}
 
@@ -87,8 +113,8 @@ func (s *domainRegistry) GetDomainFields(domainName string, fields []MetadataFie
 }
 
 // GetDomainData retrieves metadata for a given domain
-func (s *domainRegistry) GetDomainData(domainName string, field MetadataField) (Metadata, error) {
-	data, found := s.metadata.Get(domainName)
+func (d *domainRegistry) GetDomainData(domainName string, field MetadataField) (Metadata, error) {
+	data, found := d.metadata.Get(domainName)
 	if !found {
 		return Metadata{}, ErrInvalidDomainName
 	}
@@ -121,6 +147,6 @@ func (s *domainRegistry) GetDomainData(domainName string, field MetadataField) (
 			ContactInfo: metadata.ContactInfo,
 		}, nil
 	default:
-		return Metadata{}, ErrInvalidMetadataType
+		return Metadata{}, ErrInvalidMetadataField
 	}
 }

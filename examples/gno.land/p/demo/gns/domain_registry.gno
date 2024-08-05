@@ -25,6 +25,7 @@ type DomainRegistry interface {
 	SetApprovalForAll(operator std.Address, approved bool) error
 	GetApproved(domainName string) (std.Address, error)
 	IsApprovedForAll(owner, operator std.Address) bool
+	Mint(to std.Address, domainName string) error
 
 	RegisterDomain(owner std.Address, domainName string, metadata Metadata) error
 	SetDomainData(domainName string, metadata Metadata) error
@@ -176,4 +177,40 @@ func (d *domainRegistry) GetDomainData(domainName string, field MetadataField) (
 	default:
 		return Metadata{}, ErrInvalidMetadataField
 	}
+}
+
+func (d *domainRegistry) BalanceOf(owner std.Address) (uint64, error) {
+	return d.domains.BalanceOf(owner)
+}
+
+func (d *domainRegistry) OwnerOf(domainName string) (std.Address, error) {
+	return d.domains.OwnerOf(grc721.TokenID(domainName))
+}
+
+func (d *domainRegistry) SafeTransferFrom(from, to std.Address, domainName string) error {
+	return d.domains.SafeTransferFrom(from, to, grc721.TokenID(domainName))
+}
+
+func (d *domainRegistry) TransferFrom(from, to std.Address, domainName string) error {
+	return d.domains.TransferFrom(from, to, grc721.TokenID(domainName))
+}
+
+func (d *domainRegistry) Approve(approved std.Address, domainName string) error {
+	return d.domains.Approve(approved, grc721.TokenID(domainName))
+}
+
+func (d *domainRegistry) SetApprovalForAll(operator std.Address, approved bool) error {
+	return d.domains.SetApprovalForAll(operator, approved)
+}
+
+func (d *domainRegistry) GetApproved(domainName string) (std.Address, error) {
+	return d.domains.GetApproved(grc721.TokenID(domainName))
+}
+
+func (d *domainRegistry) IsApprovedForAll(owner, operator std.Address) bool {
+	return d.domains.IsApprovedForAll(owner, operator)
+}
+
+func (d *domainRegistry) Mint(to std.Address, domainName string) error {
+	return d.domains.Mint(to, grc721.TokenID(domainName))
 }

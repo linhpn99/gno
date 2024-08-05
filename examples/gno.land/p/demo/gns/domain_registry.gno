@@ -17,8 +17,16 @@ type domainRegistry struct {
 
 // DomainRegistry defines the methods for managing domain names and metadata
 type DomainRegistry interface {
-	grc721.IGRC721
+	BalanceOf(owner std.Address) (uint64, error)
+	OwnerOf(domainName string) (std.Address, error)
+	SafeTransferFrom(from, to std.Address, domainName string) error
+	TransferFrom(from, to std.Address, domainName string) error
+	Approve(approved std.Address, domainName string) error
+	SetApprovalForAll(operator std.Address, approved bool) error
+	GetApproved(domainName string) (std.Address, error)
+	IsApprovedForAll(owner, operator std.Address) bool
 
+	RegisterDomain(owner std.Address, domainName string, metadata Metadata) error
 	SetDomainData(domainName string, metadata Metadata) error
 	GetDomainData(domainName string, field MetadataField) (Metadata, error)
 	GetDomainFields(domainName string, fields []MetadataField) (Metadata, error)
@@ -35,16 +43,27 @@ func NewDomainRegistry(name, symbol string) *domainRegistry {
 	}
 }
 
+func (d *domainRegistry) RegisterDomain(owner std.Address, domainName string, metadata Metadata) error {
+	err := d.domains.Mint(owner, grc721.TokenID(domainName))
+	if err != nil {
+		return err
+	}
+
+	d.metadata.Set(domainName, metadata)
+
+	return nil
+}
+
 // RenewDomain extends the expiration time of a domain name
-func (s *domainRegistry) RenewDomain(domainName string, additionalDuration time.Duration) error {
-	data, found := s.metadata.Get(domainName)
+func (d *domainRegistry) RenewDomain(domainName string, additionalDuration time.Duration) error {
+	data, found := d.metadata.Get(domainName)
 	if !found {
 		return ErrInvalidDomainName
 	}
 
 	metadata := data.(Metadata)
 
-	owner, err := s.domains.OwnerOf(grc721.TokenID(domainName))
+	owner, err := d.domains.OwnerOf(grc721.TokenID(domainName))
 	if err != nil {
 		return err
 	}
@@ -57,7 +76,7 @@ func (s *domainRegistry) RenewDomain(domainName string, additionalDuration time.
 	// Todo : apply deduction renewal fee here
 
 	metadata.ExpirationTime.Add(additionalDuration)
-	s.metadata.Set(domainName, metadata)
+	d.metadata.Set(domainName, metadata)
 
 	return nil
 }
